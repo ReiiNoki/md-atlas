@@ -1,8 +1,14 @@
 import { Filter, X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
+import { displayCountryName } from "../utils/locations";
 
-export function FilterConsole({ filters, years, onFilterChange, onReset, onClose }) {
-  const { t } = useLanguage();
+export function FilterConsole({ filters, years, countries = [], onFilterChange, onReset, onClose }) {
+  const { language, formatNumber, t } = useLanguage();
+  // Present countries by their localized display name instead of archive order.
+  const sortedCountries = [...countries].sort((a, b) =>
+    displayCountryName(a.code, a.country, language)
+      .localeCompare(displayCountryName(b.code, b.country, language), language === "en" ? "en" : "zh-Hans-CN"),
+  );
 
   return (
     <section className="filter-console" id="filter-console" aria-label={t("filters")}>
@@ -44,6 +50,20 @@ export function FilterConsole({ filters, years, onFilterChange, onReset, onClose
           <option value="APAC">APAC</option>
           <option value="EMEA">EMEA</option>
           <option value="AMER">AMER</option>
+        </select>
+      </label>
+      <label>
+        {t("country")}
+        <select
+          value={filters.country}
+          onChange={(event) => onFilterChange("country", event.target.value)}
+        >
+          <option value="all">{t("allCountries")}</option>
+          {sortedCountries.map(({ code, country, count }) => (
+            <option key={code} value={code}>
+              {displayCountryName(code, country, language)} ({formatNumber(count)})
+            </option>
+          ))}
         </select>
       </label>
       <label>

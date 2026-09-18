@@ -1,9 +1,10 @@
-import { citySearchAliases, countrySearchAliases } from "./locations.js";
+import { citySearchAliases, countrySearchAliases, normalizeCountryCode } from "./locations.js";
 
 export const INITIAL_FILTERS = {
   query: "",
   year: "all",
   region: "all",
+  country: "all",
   status: "all",
 };
 
@@ -27,6 +28,10 @@ export function filterEvents(events, filters, deferredQuery = filters.query) {
   return events.filter((event) => {
     if (filters.year !== "all" && String(event.year) !== filters.year) return false;
     if (filters.region !== "all" && event.region !== filters.region) return false;
+    if (
+      filters.country !== "all" &&
+      normalizeCountryCode(event.countryCode, event.country) !== filters.country
+    ) return false;
     if (filters.status !== "all" && event.status !== filters.status) return false;
     return matchesQuery(event, deferredQuery);
   });
@@ -44,6 +49,21 @@ export function getYearRange(events) {
   const years = events.map((event) => event.year).filter(Number.isFinite);
   if (!years.length) return null;
   return { min: Math.min(...years), max: Math.max(...years) };
+}
+
+/** Unique country filter options with event counts, most active first. */
+export function countEventsByCountry(events) {
+  const counts = new Map();
+  for (const event of events) {
+    const code = normalizeCountryCode(event.countryCode, event.country);
+    if (!code) continue;
+    const entry = counts.get(code) ?? { code, country: event.country, count: 0 };
+    entry.count += 1;
+    counts.set(code, entry);
+  }
+  return [...counts.values()].sort(
+    (a, b) => b.count - a.count || a.code.localeCompare(b.code),
+  );
 }
 
 export function expandAnalytics(data) {

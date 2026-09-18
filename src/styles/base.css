@@ -53,6 +53,8 @@
   .boot-screen strong { font-family: var(--font-heading); font-size: 20px; }
   .boot-screen span { color: var(--color-text-muted); font-size: 14px; }
   .boot-screen--error svg { color: var(--color-red); animation: none; }
+  .view-crash__actions { display: flex; gap: 8px; margin-top: 12px; }
+  .boot-screen .mono, .empty-state .mono { color: var(--color-text-muted); font-size: 12px; }
 
   .view-loading, .map-state, .detail-loading {
     display: flex; align-items: center; justify-content: center; gap: 8px;

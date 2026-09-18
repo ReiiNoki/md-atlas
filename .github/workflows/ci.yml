@@ -7,6 +7,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,6 +18,12 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run check
+      # Reuses the dist/ build from npm run check; the script launches the
+      # bundled map Worker under SwiftShader (the runner has no GPU) and fails
+      # on any console exception or assertion, so no errors are swallowed.
+      - run: node scripts/check-map-browser.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
       - run: npm run test:workers
       - run: npm run deploy:check
         env:

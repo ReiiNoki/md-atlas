@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- Source for public/og-card.png (1200x630). Regenerate with:
+     chrome --headless=new --screenshot=public/og-card.png --window-size=1200,630 --hide-scrollbars scripts/og-card.html
+     Font paths resolve from this file's location into node_modules. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: "Rajdhani";
+    src: url("../node_modules/@fontsource/rajdhani/files/rajdhani-latin-700-normal.woff2") format("woff2");
+    font-weight: 700;
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: "IBM Plex Mono";
+    src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+    font-weight: 400;
+  }
+  * { margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 96px;
+    box-sizing: border-box;
+    background:
+      linear-gradient(rgb(66 214 223 / 4%) 1px, transparent 1px) 0 0 / 100% 46px,
+      linear-gradient(90deg, rgb(66 214 223 / 4%) 1px, transparent 1px) 0 0 / 46px 100%,
+      #05090b;
+    font-family: "IBM Plex Sans", sans-serif;
+    color: #f1ede3;
+  }
+  .brand { display: flex; align-items: center; gap: 24px; }
+  .brand img { width: 108px; height: 108px; }
+  h1 {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 112px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    line-height: 1;
+    color: #f1ede3;
+  }
+  .accent { width: 168px; height: 5px; margin: 36px 0; background: #42d6df; }
+  .zh { font-size: 40px; color: #e8e4da; }
+  .en { margin-top: 10px; font-size: 28px; color: #9fb3b8; }
+  .footer {
+    position: absolute;
+    left: 96px;
+    right: 96px;
+    bottom: 48px;
+    display: flex;
+    justify-content: space-between;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 19px;
+    color: #668089;
+  }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <img src="../public/favicon.svg" alt="" />
+    <h1>MD ATLAS</h1>
+  </div>
+  <div class="accent"></div>
+  <div class="zh">Ingress Mission Day 活动档案</div>
+  <div class="en">Mission Day event archive — dates, missions and ratings</div>
+  <div class="footer"><span>reiinoki.dpdns.org/md-atlas</span><span data-source="bannergress">data: Bannergress · Intel Map</span></div>
+</body>
+</html>

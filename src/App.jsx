@@ -1,6 +1,4 @@
 import {
-  lazy,
-  Suspense,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -14,22 +12,26 @@ import { ArchiveView } from "./components/ArchiveView";
 import { ActiveFilters } from "./components/ActiveFilters";
 import { activeFilterEntries } from "./utils/filters";
 import { FilterConsole } from "./components/FilterConsole";
+import { ViewErrorBoundary, ViewCrashFallback } from "./components/ErrorBoundary";
+import { RetryableLazyView } from "./components/RetryableLazyView";
 import { MapWorkspace } from "./components/MapWorkspace";
 import { TopBar } from "./components/TopBar";
 import { ViewLoading } from "./components/ViewLoading";
 import { useLanguage } from "./i18n.jsx";
 import {
+  countEventsByCountry,
   expandAnalytics,
   filterEvents,
   INITIAL_FILTERS,
 } from "./utils/archive";
+import { parseUrlState, serializeUrlState } from "./utils/urlState";
 
-const CalendarView = lazy(() =>
-  import("./components/CalendarView").then((module) => ({ default: module.CalendarView })),
-);
-const DataView = lazy(() =>
-  import("./components/DataView").then((module) => ({ default: module.DataView })),
-);
+// Chunk loaders stay resolvable outside render so a failed fetch can be
+// retried with a fresh import() call.
+const loadCalendarView = () =>
+  import("./components/CalendarView").then((module) => ({ default: module.CalendarView }));
+const loadDataView = () =>
+  import("./components/DataView").then((module) => ({ default: module.DataView }));
 
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
 
@@ -45,6 +47,9 @@ const EMPTY_META = {
 
 export default function App() {
   const { t } = useLanguage();
+  // Shareable state (view, filters, selected event) initializes from the URL so
+  // deep links survive refreshes; UI-only state (drawer, feed, density) does not.
+  const [initialUrlState] = useState(() => parseUrlState(window.location.search));
   const [archive, setArchive] = useState({ meta: EMPTY_META, events: [] });
   const [loadState, setLoadState] = useState("loading");
   const [loadError, setLoadError] = useState("");
@@ -54,18 +59,28 @@ export default function App() {
   const [analyticsAttempt, setAnalyticsAttempt] = useState(0);
   const [eventDetails, setEventDetails] = useState({});
   const [detailLoadState, setDetailLoadState] = useState("idle");
-  const [activeView, setActiveView] = useState("map");
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [activeView, setActiveView] = useState(initialUrlState.view);
+  const [filters, setFilters] = useState(initialUrlState.filters);
   const [feedRegion, setFeedRegion] = useState("all");
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(initialUrlState.event);
   const [detailOpen, setDetailOpen] = useState(false);
   const [feedOpen, setFeedOpen] = useState(true);
   const [filterConsoleOpen, setFilterConsoleOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(60);
   const [density, setDensity] = useState("compact");
+  // Per-view retry epochs: bumping reruns the chunk import and remounts the
+  // view's error boundary, giving a failed chunk a genuinely fresh fetch.
+  const [viewEpochs, setViewEpochs] = useState(() => ({ map: 0, archive: 0, calendar: 0, data: 0 }));
+  const retryView = (view) =>
+    setViewEpochs((current) => ({ ...current, [view]: current[view] + 1 }));
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(filters.query);
   const filterButtonRef = useRef(null);
+  // URL bookkeeping: whether the current selection was user/url requested, and
+  // how the next effect-driven write should land in history (typing replaces,
+  // discrete actions push).
+  const urlSelectionIsExplicitRef = useRef(Boolean(initialUrlState.event));
+  const urlWriteModeRef = useRef("replace");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,7 +93,14 @@ export default function App() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         setArchive(data);
-        setSelectedId(data.events[0]?.id ?? null);
+        // Honor a URL-selected event once the archive can validate it; never
+        // let the default first item override a deep link.
+        const requestedValid =
+          initialUrlState.event &&
+          data.events.some((event) => event.id === initialUrlState.event);
+        urlWriteModeRef.current = "replace";
+        urlSelectionIsExplicitRef.current = Boolean(requestedValid);
+        setSelectedId(requestedValid ? initialUrlState.event : (data.events[0]?.id ?? null));
         setLoadState("ready");
       } catch (error) {
         if (error.name === "AbortError") return;
@@ -89,6 +111,8 @@ export default function App() {
 
     loadArchive();
     return () => controller.abort();
+    // initialUrlState.event is a stable boot-time constant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const years = useMemo(
@@ -99,14 +123,24 @@ export default function App() {
     [archive.meta.yearCounts],
   );
 
+  // Country options come from the full archive so the list stays stable while
+  // other filters are active; counts reflect the whole archive.
+  const countries = useMemo(() => countEventsByCountry(archive.events), [archive.events]);
+
   const filteredEvents = useMemo(
     () => filterEvents(archive.events, filters, deferredQuery),
     [archive.events, deferredQuery, filters],
   );
 
+  // A URL-selected event resolves against the full archive so a shared link
+  // keeps showing its event even when the sharer's filters would hide it.
+  // Filter changes clear selectedId, so normal browsing falls back to the
+  // first event in the filtered result set.
   const selectedEvent = useMemo(
-    () => filteredEvents.find((event) => event.id === selectedId) ?? filteredEvents[0],
-    [filteredEvents, selectedId],
+    () =>
+      archive.events.find((event) => event.id === selectedId) ??
+      filteredEvents[0],
+    [archive.events, filteredEvents, selectedId],
   );
   const selectedEventDetail = selectedEvent
     ? (eventDetails[selectedEvent.id] ?? selectedEvent)
@@ -175,9 +209,48 @@ export default function App() {
     };
   }, [filterConsoleOpen]);
 
+  const archiveReady = loadState !== "loading";
+
+  // Keep the query string in step with shareable state. Discrete actions push a
+  // history entry; search typing and boot-time normalization replace in place.
+  useEffect(() => {
+    if (!archiveReady) return;
+    const serialized = serializeUrlState({
+      view: activeView,
+      filters,
+      event: urlSelectionIsExplicitRef.current ? selectedId : null,
+    });
+    if (serialized === window.location.search) return;
+    const nextUrl = `${window.location.pathname}${serialized}${window.location.hash}`;
+    if (urlWriteModeRef.current === "push") window.history.pushState(null, "", nextUrl);
+    else window.history.replaceState(null, "", nextUrl);
+  }, [activeView, archiveReady, filters, selectedId]);
+
+  // Back/forward restores view, filters and selection; the detail drawer stays
+  // as-is so returning through history never forces panels open.
+  useEffect(() => {
+    const onPopState = () => {
+      const parsed = parseUrlState(window.location.search);
+      urlWriteModeRef.current = "replace";
+      urlSelectionIsExplicitRef.current = Boolean(parsed.event);
+      startTransition(() => {
+        setActiveView(parsed.view);
+        setFilters(parsed.filters);
+        setSelectedId(parsed.event);
+        setVisibleCount(60);
+        setDetailLoadState(parsed.event && eventDetails[parsed.event] ? "ready" : "idle");
+      });
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [eventDetails]);
+
   const updateFilter = (key, value) => {
+    urlWriteModeRef.current = key === "query" ? "replace" : "push";
+    urlSelectionIsExplicitRef.current = false;
     startTransition(() => {
       setFilters((current) => ({ ...current, [key]: value }));
+      setSelectedId(null);
       setVisibleCount(60);
     });
   };
@@ -188,14 +261,18 @@ export default function App() {
   };
 
   const changeView = (view) => {
+    urlWriteModeRef.current = "push";
     setActiveView(view);
     setFilterConsoleOpen(false);
     if (view !== "map") setFeedOpen(false);
   };
 
   const resetFilters = () => {
+    urlWriteModeRef.current = "push";
+    urlSelectionIsExplicitRef.current = false;
     startTransition(() => {
       setFilters(INITIAL_FILTERS);
+      setSelectedId(null);
       setVisibleCount(60);
     });
   };
@@ -206,6 +283,8 @@ export default function App() {
   };
 
   const selectEvent = (id) => {
+    urlWriteModeRef.current = "push";
+    urlSelectionIsExplicitRef.current = true;
     setSelectedId(id);
     setDetailLoadState(eventDetails[id] ? "ready" : "idle");
     setDetailOpen(true);
@@ -253,6 +332,7 @@ export default function App() {
         onToggleFilters={() => setFilterConsoleOpen((open) => !open)}
         feedOpen={feedOpen}
         onToggleFeed={() => {
+          urlWriteModeRef.current = "push";
           setActiveView("map");
           setFeedOpen((open) => !open);
         }}
@@ -269,59 +349,71 @@ export default function App() {
 
       <main className={`intel-workspace intel-workspace--${activeView}`}>
         {activeView === "map" ? (
-          <MapWorkspace
-            events={filteredEvents}
-            selectedEvent={selectedEvent}
-            onSelect={selectEvent}
-            feedEvents={feedEvents}
-            feedRegion={feedRegion}
-            onFeedRegionChange={setFeedRegion}
-            onOpenArchive={() => changeView("archive")}
-            feedOpen={feedOpen}
-            detailOpen={detailOpen}
-            onCloseDetail={() => setDetailOpen(false)}
-          />
+          <ViewErrorBoundary key={`map-${viewEpochs.map}`} fallback={ViewCrashFallback}>
+            <MapWorkspace
+              events={filteredEvents}
+              selectedEvent={selectedEvent}
+              onSelect={selectEvent}
+              feedEvents={feedEvents}
+              feedRegion={feedRegion}
+              onFeedRegionChange={setFeedRegion}
+              onOpenArchive={() => changeView("archive")}
+              feedOpen={feedOpen}
+              detailOpen={detailOpen}
+              onCloseDetail={() => setDetailOpen(false)}
+            />
+          </ViewErrorBoundary>
         ) : null}
 
         {activeView === "archive" ? (
-          <ArchiveView
-            events={filteredEvents}
-            selectedEvent={selectedEvent}
-            selectedEventDetail={selectedEventDetail}
-            onSelect={selectEvent}
-            detailOpen={detailOpen}
-            onCloseDetail={() => setDetailOpen(false)}
-            detailLoadState={detailLoadState}
-            density={density}
-            onToggleDensity={() =>
-              setDensity((current) =>
-                current === "compact" ? "comfortable" : "compact",
-              )
-            }
-            visibleCount={visibleCount}
-            onLoadMore={() => setVisibleCount((count) => count + 60)}
-            isPending={isPending}
-            onResetFilters={resetFilters}
-          />
+          <ViewErrorBoundary key={`archive-${viewEpochs.archive}`} fallback={ViewCrashFallback}>
+            <ArchiveView
+              events={filteredEvents}
+              selectedEvent={selectedEvent}
+              selectedEventDetail={selectedEventDetail}
+              onSelect={selectEvent}
+              detailOpen={detailOpen}
+              onCloseDetail={() => setDetailOpen(false)}
+              detailLoadState={detailLoadState}
+              density={density}
+              onToggleDensity={() =>
+                setDensity((current) =>
+                  current === "compact" ? "comfortable" : "compact",
+                )
+              }
+              visibleCount={visibleCount}
+              onLoadMore={() => setVisibleCount((count) => count + 60)}
+              isPending={isPending}
+              onResetFilters={resetFilters}
+            />
+          </ViewErrorBoundary>
         ) : null}
 
         {activeView === "calendar" ? (
-          <Suspense fallback={<ViewLoading />}>
-            <CalendarView events={filteredEvents} />
-          </Suspense>
+          <RetryableLazyView
+            load={loadCalendarView}
+            epoch={viewEpochs.calendar}
+            onRetry={() => retryView("calendar")}
+            render={(CalendarView) => <CalendarView events={filteredEvents} />}
+          />
         ) : null}
 
         {activeView === "data" ? (
           analyticsState === "ready" ? (
-            <Suspense fallback={<ViewLoading />}>
-              <DataView
-                events={filteredAnalyticsEvents}
-                onSelect={(id) => {
-                  selectEvent(id);
-                  setActiveView("archive");
-                }}
-              />
-            </Suspense>
+            <RetryableLazyView
+              load={loadDataView}
+              epoch={viewEpochs.data}
+              onRetry={() => retryView("data")}
+              render={(DataView) => (
+                <DataView
+                  events={filteredAnalyticsEvents}
+                  onSelect={(id) => {
+                    selectEvent(id);
+                    setActiveView("archive");
+                  }}
+                />
+              )}
+            />
           ) : (
             <ViewLoading
               label={
@@ -345,6 +437,7 @@ export default function App() {
           <FilterConsole
             filters={filters}
             years={years}
+            countries={countries}
             onFilterChange={updateFilter}
             onReset={resetFilters}
             onClose={() => setFilterConsoleOpen(false)}
