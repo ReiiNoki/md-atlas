@@ -1,6 +1,6 @@
 # MD Atlas
 
-[简体中文](README.md) · **English**
+[简体中文](README.md) · **English** · [日本語](README_JA.md)
 
 **An archive of Ingress Mission Day history and mission data**
 
@@ -28,7 +28,7 @@ Some event or mission records remain incomplete. Missing information is shown as
 - **Calendar:** Browse events by month and year to revisit the Mission Day timeline.
 - **Data:** Explore distributions by year, geography, and publisher, along with completion rankings and the ten highest- and lowest-rated events and individual missions.
 
-The interface is available in Chinese and English and supports both desktop and mobile layouts.
+The interface is available in Chinese, English, and Japanese and supports both desktop and mobile layouts.
 
 ## Data Sources and Notes
 

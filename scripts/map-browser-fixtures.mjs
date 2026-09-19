@@ -1,10 +1,11 @@
-// Offline bilingual vector tiles for actual WebGL label-rendering checks.
+// Offline multilingual vector tiles for actual WebGL label-rendering checks.
 // vt-pbf is pinned transitively by maplibre-gl; this is test-only code.
 import { fromGeojsonVt } from "@maplibre/vt-pbf";
 
 export const FIXTURE_NAMES = {
   "name:zh-Hans": "中文",
   "name:en": "English",
+  "name:ja": "日本語",
   "name:latin": "Original",
   name: "Original",
 };

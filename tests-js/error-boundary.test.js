@@ -20,7 +20,7 @@ const CRASH_KEYS = [
 
 test("crash fallback messages exist in both languages", () => {
   for (const key of CRASH_KEYS) {
-    for (const language of ["zh", "en"]) {
+    for (const language of ["zh", "en", "ja"]) {
       assert.notEqual(translate(language, key), key, `${language}/${key}`);
     }
   }

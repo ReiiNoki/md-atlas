@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Check,
   Languages,
   ListFilter,
   Search,
@@ -15,6 +16,12 @@ const views = [
   { id: "data", label: "data" },
 ];
 
+const languageOptions = [
+  { id: "zh", label: "简体中文" },
+  { id: "en", label: "English" },
+  { id: "ja", label: "日本語" },
+];
+
 export function TopBar({
   activeView,
   onViewChange,
@@ -27,15 +34,36 @@ export function TopBar({
   activeFilterCount = 0,
   filterButtonRef,
 }) {
-  const { language, toggleLanguage, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const searchInputRef = useRef(null);
   const searchToggleRef = useRef(null);
+  const languagePickerRef = useRef(null);
+  const languageButtonRef = useRef(null);
   const searchVisible = searchExpanded || filters.query.length > 0;
 
   useEffect(() => {
     if (searchExpanded) searchInputRef.current?.focus();
   }, [searchExpanded]);
+
+  useEffect(() => {
+    if (!languageMenuOpen) return undefined;
+
+    const closeLanguageMenu = (event) => {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "pointerdown" && languagePickerRef.current?.contains(event.target)) return;
+      setLanguageMenuOpen(false);
+      if (event.type === "keydown") languageButtonRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", closeLanguageMenu);
+    document.addEventListener("keydown", closeLanguageMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeLanguageMenu);
+      document.removeEventListener("keydown", closeLanguageMenu);
+    };
+  }, [languageMenuOpen]);
 
   const toggleSearch = () => {
     if (filters.query) {
@@ -158,17 +186,42 @@ export function TopBar({
         {activeFilterCount ? <span>{activeFilterCount}</span> : null}
       </button>
 
-      <button
-        className="intel-language-button"
-        type="button"
-        title={t("switchLanguage")}
-        aria-label={t("language")}
-        aria-pressed={language === "en"}
-        onClick={toggleLanguage}
-      >
-        <Languages size={16} strokeWidth={1.35} />
-        <span>{t("alternateLanguageShort")}</span>
-      </button>
+      <div className="intel-language-picker" ref={languagePickerRef}>
+        <button
+          ref={languageButtonRef}
+          className="intel-language-button"
+          type="button"
+          title={t("switchLanguage")}
+          aria-label={t("switchLanguage")}
+          aria-expanded={languageMenuOpen}
+          aria-haspopup="menu"
+          aria-controls="language-menu"
+          onClick={() => setLanguageMenuOpen((open) => !open)}
+        >
+          <Languages size={18} strokeWidth={1.35} />
+        </button>
+        {languageMenuOpen ? (
+          <div className="intel-language-menu" id="language-menu" role="menu">
+            {languageOptions.map((option) => (
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={language === option.id}
+                className={language === option.id ? "is-active" : ""}
+                key={option.id}
+                lang={option.id === "zh" ? "zh-CN" : option.id}
+                onClick={() => {
+                  setLanguage(option.id);
+                  setLanguageMenuOpen(false);
+                }}
+              >
+                <span>{option.label}</span>
+                {language === option.id ? <Check size={15} aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </header>
   );
 }

@@ -7,7 +7,7 @@
     .intel-search { grid-column: 3; }
     .intel-activity-button { grid-column: 4; }
     .intel-filter-button { grid-column: 5; }
-    .intel-language-button { grid-column: 6; }
+    .intel-language-picker { grid-column: 6; }
     .archive-layout:not(.detail-closed) { grid-template-columns: minmax(0, 1fr) 360px; }
   }
   @media (max-width: 760px) {
@@ -26,7 +26,9 @@
     .intel-tool-button { grid-row: 1; align-self: center; width: 44px; height: 44px; }
     .intel-activity-button { grid-column: 3; }
     .intel-filter-button { grid-column: 4; }
-    .intel-language-button { grid-column: 5; grid-row: 1; align-self: center; width: 44px; height: 44px; }
+    .intel-language-picker { grid-column: 5; grid-row: 1; align-self: center; width: 44px; height: 44px; }
+    .intel-language-button { width: 44px; height: 44px; }
+    .intel-language-menu { top: calc(100% + 2px); }
     .intel-statusbar { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 7px 10px; font-size: 10px; }
     .intel-statusbar__links { justify-content: flex-end; padding-left: 0; border-left: 0; }
     .archive-screen, .calendar-view, .data-view { padding: 16px; overflow: hidden auto; }

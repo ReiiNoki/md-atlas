@@ -14,13 +14,17 @@
   .intel-brand__text small { overflow: hidden; color: var(--color-text-secondary); font-family: var(--font-body); font-size: 12px; font-weight: 400; text-overflow: ellipsis; }
   .intel-topbar > .intel-search-toggle { display: none; }
   .intel-brand:hover { color: var(--color-cyan); }
-  .intel-language-button { display: flex; width: 48px; height: 40px; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: transparent; cursor: pointer; font-family: var(--font-mono); font-size: 11px; }
-  .intel-language-button:hover, .intel-language-button:focus-visible { border-color: var(--color-cyan); color: var(--color-cyan); }
+  .intel-language-picker { position: relative; width: 40px; height: 40px; }
+  .intel-language-button { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: transparent; cursor: pointer; }
+  .intel-language-button:hover, .intel-language-button:focus-visible, .intel-language-button[aria-expanded="true"] { border-color: var(--color-cyan); color: var(--color-cyan); background: var(--color-surface-raised); }
+  .intel-language-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; display: grid; width: 152px; padding: 5px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: rgb(17 24 29 / 98%); box-shadow: 0 12px 28px rgb(0 0 0 / 40%); }
+  .intel-language-menu button { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 10px; border: 0; border-radius: 2px; color: var(--color-text-secondary); background: transparent; cursor: pointer; text-align: left; }
+  .intel-language-menu button:hover, .intel-language-menu button:focus-visible { color: var(--color-text); background: var(--color-surface-raised); }
+  .intel-language-menu button.is-active { color: var(--color-cyan); }
   .intel-tabs { display: flex; min-width: 0; align-items: stretch; height: 40px; gap: 4px; overflow: hidden; }
   .intel-tabs button { min-width: 0; flex: 1 1 0; padding: 0 12px; border: 0; border-radius: var(--radius-sm); color: var(--color-text-secondary); background: transparent; cursor: pointer; font-weight: 500; }
   .intel-tabs button:hover { color: var(--color-text); background: var(--color-surface-raised); }
   .intel-tabs button.is-active { color: var(--color-text); background: var(--color-surface-raised); box-shadow: inset 0 -2px 0 var(--color-cyan); }
-  .intel-language-button span { line-height: 1; }
 
   .intel-workspace {
     position: relative; grid-row: 3; min-width: 0; min-height: 0;

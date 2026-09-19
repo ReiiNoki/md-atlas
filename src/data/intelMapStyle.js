@@ -5,7 +5,9 @@ export function mapPlaceName(language = "zh") {
   // Empty translations must fall back instead of hiding the label.
   const fields = language === "en"
     ? ["name:en", "name_en", "name:latin", "name"]
-    : ["name:zh-Hans", "name:zh", "name:zh-Hant", "name", "name:latin", "name:en", "name_en"];
+    : language === "ja"
+      ? ["name:ja", "name", "name:latin", "name:en", "name_en"]
+      : ["name:zh-Hans", "name:zh", "name:zh-Hant", "name", "name:latin", "name:en", "name_en"];
   return [
     "case",
     ...fields.flatMap((field) => [

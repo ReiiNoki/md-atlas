@@ -4,10 +4,12 @@ import { localeForLanguage } from "./i18n/formatters.js";
 import { translate } from "./i18n/messages.js";
 
 const STORAGE_KEY = "mission-day-language";
+const SUPPORTED_LANGUAGES = ["zh", "en", "ja"];
+const DOCUMENT_LANGUAGES = { zh: "zh-CN", en: "en", ja: "ja" };
 const LanguageContext = createContext(null);
 
 function normalizeLanguage(language) {
-  return language === "en" ? "en" : "zh";
+  return SUPPORTED_LANGUAGES.includes(language) ? language : "zh";
 }
 
 function persistLanguage(language) {
@@ -28,7 +30,7 @@ export function LanguageProvider({ children }) {
   });
 
   useEffect(() => {
-    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+    document.documentElement.lang = DOCUMENT_LANGUAGES[language];
     document.title = translate(language, "pageTitle");
     document
       .querySelector('meta[name="description"]')
@@ -48,7 +50,10 @@ export function LanguageProvider({ children }) {
       language,
       locale,
       setLanguage,
-      toggleLanguage: () => setLanguage(language === "zh" ? "en" : "zh"),
+      toggleLanguage: () => {
+        const index = SUPPORTED_LANGUAGES.indexOf(language);
+        setLanguage(SUPPORTED_LANGUAGES[(index + 1) % SUPPORTED_LANGUAGES.length]);
+      },
       t: (key, params) => translate(language, key, params),
       formatNumber: (number) => numberFormatter.format(number),
     };

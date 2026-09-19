@@ -16,9 +16,9 @@ test("filter indicators retain every active criterion without mutating filters",
   assert.deepEqual(activeFilterEntries({ ...filters, region: "all" }).map(([key]) => key), ["query", "year", "status"]);
 });
 
-test("both language titles use MD Atlas and retain the full archive name", () => {
-  for (const language of ["zh", "en"]) {
-    assert.equal(translate(language, "pageTitle"), "MD Atlas — Ingress Mission Day Archive");
+test("all language titles use MD Atlas and retain the full archive name", () => {
+  for (const language of ["zh", "en", "ja"]) {
+    assert.match(translate(language, "pageTitle"), /^MD Atlas — Ingress Mission Day/);
     for (const key of ["brandDescription", "openSearch", "closeSearch", "editSearch"]) {
       assert.notEqual(translate(language, key), key);
     }

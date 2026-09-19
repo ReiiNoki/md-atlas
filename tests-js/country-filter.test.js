@@ -86,10 +86,11 @@ test("country filter is exposed in the filter console and active chips", () => {
 });
 
 test("country filter labels are localized in both languages", () => {
-  for (const language of ["zh", "en"]) {
+  for (const language of ["zh", "en", "ja"]) {
     assert.notEqual(translate(language, "country"), "country");
     assert.notEqual(translate(language, "allCountries"), "allCountries");
   }
   assert.equal(translate("zh", "country"), "国家或地区");
   assert.equal(translate("en", "country"), "Country/Region");
+  assert.equal(translate("ja", "country"), "国・地域");
 });

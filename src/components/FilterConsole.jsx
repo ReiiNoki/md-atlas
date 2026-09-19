@@ -7,7 +7,10 @@ export function FilterConsole({ filters, years, countries = [], onFilterChange, 
   // Present countries by their localized display name instead of archive order.
   const sortedCountries = [...countries].sort((a, b) =>
     displayCountryName(a.code, a.country, language)
-      .localeCompare(displayCountryName(b.code, b.country, language), language === "en" ? "en" : "zh-Hans-CN"),
+      .localeCompare(
+        displayCountryName(b.code, b.country, language),
+        language === "zh" ? "zh-Hans-CN" : language,
+      ),
   );
 
   return (

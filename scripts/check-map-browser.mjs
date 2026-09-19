@@ -1,6 +1,6 @@
 // Optional Chromium smoke test against Vite preview, --dev or --workers,
 // without a framework dependency. Requires Node 22+ and Chrome (CHROME_PATH).
-// Bilingual vector fixtures and local fonts exercise actual label rendering offline;
+// Multilingual vector fixtures and local fonts exercise actual label rendering offline;
 // banner images are blocked deliberately.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -209,22 +209,33 @@ try {
     assert.ok(await evaluate("window.__smokeCanvas === document.querySelector('.mission-map canvas')"));
     await sleep(500); // Allow the renderer to commit the worker result.
   }
-  async function switchMapLanguage() {
-    await evaluate("window.__mapReloads.sources = []");
+  async function selectLanguage(language) {
+    const lang = language === "zh" ? "zh-CN" : language;
     await click(".intel-language-button");
+    await click(`.intel-language-menu button[lang="${lang}"]`);
+  }
+  async function switchMapLanguage(language) {
+    await evaluate("window.__mapReloads.sources = []");
+    await selectLanguage(language);
     await waitForLabelLayout();
   }
   const chinesePixels = await labelPixels("zh");
-  await switchMapLanguage();
+  await switchMapLanguage("en");
   const englishPixels = await labelPixels("en");
   assert.notEqual(englishPixels, chinesePixels, "English labels must change actual map pixels");
-  await switchMapLanguage();
+  await switchMapLanguage("ja");
+  const japanesePixels = await labelPixels("ja");
+  assert.notEqual(japanesePixels, englishPixels, "Japanese labels must change actual map pixels");
+  assert.notEqual(japanesePixels, chinesePixels, "Japanese labels must differ from Chinese labels");
+  await switchMapLanguage("zh");
   assert.equal(await labelPixels("zh-return"), chinesePixels, "Returning to Chinese must restore the same map view and labels");
   await evaluate("window.__mapReloads.sources = []");
-  for (let i = 0; i < 3; i++) await click(".intel-language-button");
+  for (const language of ["en", "ja", "zh", "en"]) await selectLanguage(language);
   await waitForLabelLayout();
-  assert.equal(await labelPixels("en-rapid"), englishPixels, "The latest language must win after rapid toggles");
-  await switchMapLanguage();
+  assert.equal(await labelPixels("en-rapid"), englishPixels, "The latest language must win after rapid selections");
+  await switchMapLanguage("ja");
+  assert.equal(await labelPixels("ja-final"), japanesePixels);
+  await switchMapLanguage("zh");
   assert.equal(await labelPixels("zh-final"), chinesePixels);
   const labelReloadAborts = await evaluate("window.__mapReloads.aborted");
 
@@ -237,7 +248,7 @@ try {
   assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstCityZh);
   assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), firstCityZh);
   await evaluate("window.__smokeCanvas = document.querySelector('.mission-map canvas')");
-  await click(".intel-language-button");
+  await selectLanguage("en");
   assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.city);
   assert.ok(await evaluate("window.__smokeCanvas === document.querySelector('.mission-map canvas')"));
   await send("Input.dispatchMouseEvent", { type: "mousePressed", button: "left", clickCount: 1, ...point });
@@ -287,7 +298,13 @@ try {
   await view(2);
   await waitFor(() => visible(".event-row"), "archive");
   assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstEvent.city);
-  await click(".intel-language-button");
+  await selectLanguage("ja");
+  assert.equal(await evaluate("document.documentElement.lang"), "ja");
+  assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstEvent.city);
+  assert.ok(await evaluate(
+    "document.querySelector('.intel-statusbar__legal').textContent.includes('公式な関係はありません')",
+  ));
+  await selectLanguage("zh");
   assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstCityZh);
   assert.ok(await evaluate(
     "document.querySelector('.intel-statusbar__legal').textContent.includes('无官方关联')",
@@ -345,8 +362,8 @@ try {
   }
   await writeFile(join(artifacts, "results.json"), JSON.stringify({
     result: "pass", mode: workers ? "workers" : dev ? "development" : "production", pageUrl, exceptions: errors, cancelledInterceptions, labelReloadAborts,
-    checks: ["map Worker", "rendered bilingual label pixels, rapid toggles and label-only tile re-layout", "popup", "localized cities and language toggle without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback"],
-    externalTiles: "synthetic bilingual vector tiles", glyphs: "local browser fonts", images: "blocked",
+    checks: ["map Worker", "rendered multilingual label pixels, rapid selections and label-only tile re-layout", "popup", "localized cities and language menu without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback"],
+    externalTiles: "synthetic multilingual vector tiles", glyphs: "local browser fonts", images: "blocked",
   }, null, 2));
   console.log(`Browser smoke passed. Artifacts: ${artifacts}`);
 } catch (error) {

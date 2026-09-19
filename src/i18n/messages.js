@@ -1,3 +1,5 @@
+import { jaMessages } from "./messages.ja.js";
+
 /** Localized interface messages. Original event and mission data is never translated. */
 export const messages = {
   zh: {
@@ -18,8 +20,7 @@ export const messages = {
     openFilters: "打开筛选器",
     closeFilters: "关闭筛选器",
     language: "语言",
-    switchLanguage: "切换到英文",
-    alternateLanguageShort: "EN",
+    switchLanguage: "选择语言",
     activity: "活动",
     events: "活动",
     missions: "任务",
@@ -212,8 +213,7 @@ export const messages = {
     openFilters: "Open filters",
     closeFilters: "Close filters",
     language: "Language",
-    switchLanguage: "Switch to Chinese",
-    alternateLanguageShort: "中",
+    switchLanguage: "Select language",
     activity: "Events",
     events: "events",
     missions: "missions",
@@ -388,6 +388,7 @@ export const messages = {
     unknownYear: "N/A",
     labelSeparator: ": ",
   },
+  ja: jaMessages,
 };
 
 export function translate(language, key, params = {}) {

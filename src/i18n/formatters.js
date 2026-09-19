@@ -1,6 +1,7 @@
 export const LANGUAGE_LOCALES = {
   zh: "zh-CN",
   en: "en-US",
+  ja: "ja-JP",
 };
 
 export function localeForLanguage(language) {

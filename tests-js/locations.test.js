@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   countrySearchAliases,
+  displayCityName,
   displayCountryName,
   normalizeCountryCode,
 } from "../src/utils/locations.js";
@@ -36,6 +37,10 @@ test("approved CN, TW, HK and MO display names override standard translations", 
   }
   assert.equal(displayCountryName(undefined, "Macau", "en"), "Macao");
   assert.equal(displayCountryName(null, "Hong Kong", "zh"), "香港地区");
+  assert.equal(displayCountryName("CN", "China", "ja"), "中国");
+  assert.equal(displayCountryName("TW", "Taiwan", "ja"), "台湾");
+  assert.equal(displayCountryName("HK", "Hong Kong", "ja"), "香港");
+  assert.equal(displayCountryName("MO", "Macao", "ja"), "マカオ");
 });
 
 test("code normalization and unknown names have safe fallbacks", () => {
@@ -48,6 +53,12 @@ test("code normalization and unknown names have safe fallbacks", () => {
   assert.equal(displayCountryName(null, null), "—");
   assert.equal(normalizeCountryCode(null, "__proto__"), undefined);
   assert.deepEqual(countrySearchAliases(null, null), []);
+});
+
+test("Japanese country labels use Japanese region names while cities retain source text", () => {
+  assert.equal(displayCountryName("DE", "Germany", "ja"), "ドイツ");
+  assert.equal(displayCountryName("JP", "Japan", "ja"), "日本");
+  assert.equal(displayCityName("JP", "Tokyo", "ja"), "Tokyo");
 });
 
 test("English source labels are preserved even when the standard name differs", () => {
