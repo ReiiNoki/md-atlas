@@ -1,5 +1,7 @@
 # MD Atlas
 
+**简体中文** · [English](README_EN.md)
+
 **Ingress Mission Day 活动历史与任务数据档案**
 
 ## 项目简介
@@ -8,7 +10,7 @@ MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期�
 
 无论是寻找曾经参加过的活动、探索其他城市的任务，还是了解 Mission Day 历年的分布与变化，都可以从这里开始。
 
-**浏览档案：[reiinoki.dpdns.org/md-atlas](https://reiinoki.dpdns.org/md-atlas/)**
+**浏览档案：[md-atlas.reiinoki.dpdns.org](https://md-atlas.reiinoki.dpdns.org/)**
 
 ## 可以查看什么
 
