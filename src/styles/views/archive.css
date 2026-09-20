@@ -2,6 +2,7 @@
   .archive-tools { display: flex; align-items: center; gap: 12px; }
   .archive-tools strong, .surface-heading__metric { color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
   .archive-screen { display: flex; flex-direction: column; }
+  .archive-screen > .intel-surface-heading, .archive-screen > .archive-layout { width: min(100%, 1320px); margin-right: auto; margin-left: auto; }
   .archive-screen > header { flex: 0 0 auto; }
   .archive-layout { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(360px, 400px); gap: 16px; padding-top: 12px; }
   .archive-layout.detail-closed { grid-template-columns: minmax(0, 1fr) 0; gap: 0; }

@@ -4,6 +4,7 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-divider) transparent;
   }
+  .calendar-view > .surface-heading, .calendar-view > .calendar-split { width: min(100%, 1320px); margin-right: auto; margin-left: auto; }
 
   .calendar-heading { align-items: center; }
   .calendar-period-control {
