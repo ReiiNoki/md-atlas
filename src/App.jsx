@@ -48,7 +48,7 @@ const EMPTY_META = {
 export default function App() {
   const { t } = useLanguage();
   // Shareable state (view, filters, selected event) initializes from the URL so
-  // deep links survive refreshes; UI-only state (drawer, feed, density) does not.
+  // deep links survive refreshes; UI-only state (drawer and feed) does not.
   const [initialUrlState] = useState(() => parseUrlState(window.location.search));
   const [archive, setArchive] = useState({ meta: EMPTY_META, events: [] });
   const [loadState, setLoadState] = useState("loading");
@@ -67,7 +67,6 @@ export default function App() {
   const [feedOpen, setFeedOpen] = useState(true);
   const [filterConsoleOpen, setFilterConsoleOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(60);
-  const [density, setDensity] = useState("compact");
   // Per-view retry epochs: bumping reruns the chunk import and remounts the
   // view's error boundary, giving a failed chunk a genuinely fresh fetch.
   const [viewEpochs, setViewEpochs] = useState(() => ({ map: 0, archive: 0, calendar: 0, data: 0 }));
@@ -375,12 +374,6 @@ export default function App() {
               detailOpen={detailOpen}
               onCloseDetail={() => setDetailOpen(false)}
               detailLoadState={detailLoadState}
-              density={density}
-              onToggleDensity={() =>
-                setDensity((current) =>
-                  current === "compact" ? "comfortable" : "compact",
-                )
-              }
               visibleCount={visibleCount}
               onLoadMore={() => setVisibleCount((count) => count + 60)}
               isPending={isPending}

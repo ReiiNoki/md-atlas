@@ -8,7 +8,6 @@ export function EventTable({
   events,
   selectedId,
   onSelect,
-  density,
   visibleCount,
   onLoadMore,
   onResetFilters,
@@ -32,7 +31,7 @@ export function EventTable({
   }
 
   return (
-    <div className={`event-table event-table--${density}`}>
+    <div className="event-table">
       <div className="event-table__header" aria-hidden="true">
         <span>{t("image")}</span>
         <span>{t("cityCountry")}</span>

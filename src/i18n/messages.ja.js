@@ -64,7 +64,6 @@ export const jaMessages = {
   loadNext: "次のイベントを読み込む",
   archiveDatabase: "Mission Day データベース",
   archiveIndex: "アーカイブ索引",
-  density: "表示密度",
   filterConsole: "フィルター設定",
   activeFilters: "適用中のフィルター",
   noActiveFilters: "すべてのイベントを表示中",

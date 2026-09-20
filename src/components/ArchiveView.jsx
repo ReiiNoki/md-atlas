@@ -1,4 +1,3 @@
-import { ListFilter } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
 import { EventDetail } from "./EventDetail";
 import { EventTable } from "./EventTable";
@@ -11,8 +10,6 @@ export function ArchiveView({
   detailOpen,
   onCloseDetail,
   detailLoadState,
-  density,
-  onToggleDensity,
   visibleCount,
   onLoadMore,
   isPending,
@@ -29,14 +26,6 @@ export function ArchiveView({
         </div>
         <div className="archive-tools">
           <strong>{formatNumber(events.length)} {t("events")}</strong>
-          <button
-            type="button"
-            className={density === "compact" ? "is-active" : ""}
-            onClick={onToggleDensity}
-          >
-            <ListFilter size={16} />
-            {t("density")}
-          </button>
         </div>
       </header>
       <div className={`archive-layout ${detailOpen ? "" : "detail-closed"}`}>
@@ -45,7 +34,6 @@ export function ArchiveView({
             events={events}
             selectedId={selectedEvent?.id}
             onSelect={onSelect}
-            density={density}
             visibleCount={visibleCount}
             onLoadMore={onLoadMore}
             onResetFilters={onResetFilters}
