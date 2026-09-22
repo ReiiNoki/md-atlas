@@ -27,6 +27,10 @@ export function ArchiveStatusBar() {
           <Github size={24} aria-hidden="true" />
           <span className="sr-only">{t("githubRepository")}</span>
         </a>
+        <a href="https://reiinoki.dpdns.org/" target="_blank" rel="noreferrer" title={t("personalBlog")}>
+          <img src={`${import.meta.env.BASE_URL}blog-logo.ico`} alt="" aria-hidden="true" />
+          <span className="sr-only">{t("personalBlog")}</span>
+        </a>
       </nav>
     </footer>
   );

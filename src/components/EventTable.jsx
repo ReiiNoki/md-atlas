@@ -1,4 +1,5 @@
 import { ChevronDown, MapPin, Star } from "lucide-react";
+import { MissionDayTypeBadge } from "./MissionDayTypeBadge";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
@@ -58,6 +59,7 @@ export function EventTable({
               <small>
                 <MapPin size={11} aria-hidden="true" />
                 {displayCountryName(event.countryCode, event.country, language)}{event.region ? ` · ${event.region}` : ""}
+                <MissionDayTypeBadge type={event.missionDayType} />
               </small>
             </span>
             <time dateTime={event.date ?? undefined}>{event.date ?? t("dateUnknown")}</time>

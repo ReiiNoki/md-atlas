@@ -24,6 +24,7 @@
   .event-row__place strong { overflow: hidden; color: var(--color-text); font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .event-row.is-selected .event-row__place strong { color: var(--color-cyan); }
   .event-row__place small { display: flex; align-items: center; gap: 4px; overflow: hidden; color: var(--color-text-muted); font-size: var(--text-meta); text-overflow: ellipsis; white-space: nowrap; }
+  .event-row__place small .md-type { margin-left: 8px; }
   .event-row__count { color: var(--color-text); font-family: var(--font-mono); }
   .event-row__rating { display: flex; align-items: center; gap: 5px; color: var(--color-amber); font-family: var(--font-mono); font-size: 12px; }
   .event-row__image { width: 56px; height: 42px; margin-left: 12px; padding: 0 !important; border-radius: 5px; }

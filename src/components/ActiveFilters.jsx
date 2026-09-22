@@ -8,6 +8,12 @@ const filterLabels = {
   year: (value, t) => value,
   region: (value, t) => value,
   country: (value, t, language) => displayCountryName(value, undefined, language),
+  missionDayType: (value, t) =>
+    ({
+      "md-xma": t("mdTypeXma"),
+      "md-standard": t("mdTypeStandard"),
+      "md-lite": t("mdTypeLite"),
+    })[value] ?? value,
   status: (value, t) =>
     ({
       online: t("online"),

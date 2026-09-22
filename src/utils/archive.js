@@ -5,18 +5,18 @@ export const INITIAL_FILTERS = {
   year: "all",
   region: "all",
   country: "all",
+  missionDayType: "all",
   status: "all",
 };
 
-export function matchesQuery(event, query) {
+export function matchesQuery(event, query, indexedText = event.searchText) {
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return true;
   return [
     ...citySearchAliases(event.countryCode, event.city),
     ...countrySearchAliases(event.countryCode, event.country),
     event.title,
-    event.address,
-    event.searchText,
+    indexedText,
   ]
     .filter(Boolean)
     .join(" ")
@@ -24,7 +24,12 @@ export function matchesQuery(event, query) {
     .includes(normalized);
 }
 
-export function filterEvents(events, filters, deferredQuery = filters.query) {
+export function filterEvents(
+  events,
+  filters,
+  deferredQuery = filters.query,
+  searchIndex = null,
+) {
   return events.filter((event) => {
     if (filters.year !== "all" && String(event.year) !== filters.year) return false;
     if (filters.region !== "all" && event.region !== filters.region) return false;
@@ -32,8 +37,12 @@ export function filterEvents(events, filters, deferredQuery = filters.query) {
       filters.country !== "all" &&
       normalizeCountryCode(event.countryCode, event.country) !== filters.country
     ) return false;
+    if (
+      filters.missionDayType !== "all" &&
+      event.missionDayType !== filters.missionDayType
+    ) return false;
     if (filters.status !== "all" && event.status !== filters.status) return false;
-    return matchesQuery(event, deferredQuery);
+    return matchesQuery(event, deferredQuery, searchIndex?.[event.id] ?? event.searchText);
   });
 }
 
@@ -70,13 +79,14 @@ export function expandAnalytics(data) {
   if (!Array.isArray(data?.events)) throw new TypeError("Invalid analytics payload");
   return {
     events: data.events.map(
-      ([id, year, city, country, countryCode, region, missionCount, missions]) => ({
+      ([id, year, city, country, countryCode, region, missionDayType, missionCount, missions]) => ({
         id,
         year,
         city,
         country,
         countryCode,
         region,
+        missionDayType,
         missionCount,
         missions: (missions ?? []).map(
           ([

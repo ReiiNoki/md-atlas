@@ -14,7 +14,14 @@ test("empty or default state serializes to a parameterless URL", () => {
 test("parse without parameters yields defaults", () => {
   assert.deepEqual(parseUrlState(""), {
     view: "map",
-    filters: { query: "", year: "all", region: "all", country: "all", status: "all" },
+    filters: {
+      query: "",
+      year: "all",
+      region: "all",
+      country: "all",
+      missionDayType: "all",
+      status: "all",
+    },
     event: null,
   });
 });
@@ -22,20 +29,28 @@ test("parse without parameters yields defaults", () => {
 test("non-default state round-trips through serialize and parse", () => {
   const state = {
     view: "calendar",
-    filters: { query: "kyoto", year: "2019", region: "APAC", country: "JP", status: "offline" },
+    filters: {
+      query: "kyoto",
+      year: "2019",
+      region: "APAC",
+      country: "JP",
+      missionDayType: "md-xma",
+      status: "offline",
+    },
     event: "md-2019kyoto-c90c",
   };
   const search = serializeUrlState(state);
-  assert.equal(search, "?view=calendar&q=kyoto&year=2019&region=APAC&country=JP&status=offline&event=md-2019kyoto-c90c");
+  assert.equal(search, "?view=calendar&q=kyoto&year=2019&region=APAC&country=JP&type=md-xma&status=offline&event=md-2019kyoto-c90c");
   assert.deepEqual(parseUrlState(search), state);
 });
 
 test("invalid values fall back to defaults instead of breaking the link", () => {
-  const parsed = parseUrlState("?view=explorer&q=&year=20x4&region=MARS&country=JPN&status=hidden&event=");
+  const parsed = parseUrlState("?view=explorer&q=&year=20x4&region=MARS&country=JPN&type=other&status=hidden&event=");
   assert.equal(parsed.view, "map");
   assert.equal(parsed.filters.year, "all");
   assert.equal(parsed.filters.region, "all");
   assert.equal(parsed.filters.country, "all");
+  assert.equal(parsed.filters.missionDayType, "all");
   assert.equal(parsed.filters.status, "all");
   assert.equal(parsed.event, null);
 });

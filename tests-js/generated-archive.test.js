@@ -8,6 +8,9 @@ const archive = JSON.parse(await readFile(new URL("data/archive.json", publicRoo
 const analyticsPayload = JSON.parse(
   await readFile(new URL("data/analytics.json", publicRoot), "utf8"),
 );
+const searchIndex = JSON.parse(
+  await readFile(new URL("data/search-index.json", publicRoot), "utf8"),
+);
 
 test("generated archive metadata matches event summaries", () => {
   assert.equal(archive.meta.eventCount, archive.events.length);
@@ -53,6 +56,28 @@ test("event summaries expose normalized known statuses", () => {
       true,
       `${event.id} has unexpected status ${event.status}`,
     );
+  }
+});
+
+test("every event has one audited Mission Day type", () => {
+  const allowedTypes = new Set(["md-xma", "md-standard", "md-lite"]);
+  const counts = Object.create(null);
+  for (const event of archive.events) {
+    assert.equal(
+      allowedTypes.has(event.missionDayType),
+      true,
+      `${event.id} has unexpected Mission Day type ${event.missionDayType}`,
+    );
+    counts[event.missionDayType] = (counts[event.missionDayType] ?? 0) + 1;
+  }
+  assert.deepEqual({ ...counts }, { "md-xma": 222, "md-lite": 11, "md-standard": 544 });
+});
+
+test("mission search text is deferred to a complete standalone index", () => {
+  assert.deepEqual(Object.keys(searchIndex).sort(), archive.events.map(({ id }) => id).sort());
+  for (const event of archive.events) {
+    assert.equal("searchText" in event, false);
+    assert.equal(typeof searchIndex[event.id], "string");
   }
 });
 

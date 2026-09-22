@@ -25,7 +25,7 @@ test("all language titles use MD Atlas and retain the full archive name", () => 
   }
 });
 
-test("footer legal notices are localized and link to Telegram and Ingress", () => {
+test("footer legal notices and external icon links are complete", () => {
   assert.equal(
     translate("en", "fanSiteDisclaimer"),
     "This is a fan site and not officially affiliated with Niantic Inc.",
@@ -43,6 +43,11 @@ test("footer legal notices are localized and link to Telegram and Ingress", () =
   assert.match(footer, /https:\/\/ingress\.com\//);
   assert.match(footer, /https:\/\/bannergress\.com\//);
   assert.match(footer, /https:\/\/github\.com\/ReiiNoki\/md-atlas/);
+  assert.match(footer, /https:\/\/reiinoki\.dpdns\.org\//);
+  assert.match(footer, /blog-logo\.ico/);
+  for (const language of ["zh", "en", "ja"]) {
+    assert.notEqual(translate(language, "personalBlog"), "personalBlog");
+  }
   assert.doesNotMatch(footer, /city-name-credits\.html/);
 });
 

@@ -5,4 +5,7 @@
   .status--offline { color: var(--color-red); }
   .status--partially_offline { color: var(--color-amber); }
   .status--scheduled { color: var(--color-cyan); }
+  .md-type { display: inline-flex; min-height: 18px; flex: 0 0 auto; align-items: center; padding: 0 5px; border: 1px solid currentColor; border-radius: 999px; color: var(--color-text-muted); font-family: var(--font-mono); font-size: 9px; font-weight: 500; line-height: 1; white-space: nowrap; }
+  .md-type--md-xma { color: var(--color-amber); }
+  .md-type--md-lite { color: var(--color-cyan); }
 }

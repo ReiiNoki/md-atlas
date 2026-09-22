@@ -51,6 +51,8 @@ export default function App() {
   // deep links survive refreshes; UI-only state (drawer and feed) does not.
   const [initialUrlState] = useState(() => parseUrlState(window.location.search));
   const [archive, setArchive] = useState({ meta: EMPTY_META, events: [] });
+  const [searchIndex, setSearchIndex] = useState(null);
+  const [searchIndexState, setSearchIndexState] = useState("idle");
   const [loadState, setLoadState] = useState("loading");
   const [loadError, setLoadError] = useState("");
   const [analytics, setAnalytics] = useState(null);
@@ -74,6 +76,7 @@ export default function App() {
     setViewEpochs((current) => ({ ...current, [view]: current[view] + 1 }));
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(filters.query);
+  const searchRequested = Boolean(deferredQuery.trim());
   const filterButtonRef = useRef(null);
   // URL bookkeeping: whether the current selection was user/url requested, and
   // how the next effect-driven write should land in history (typing replaces,
@@ -114,6 +117,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!searchRequested || searchIndex) return undefined;
+    const controller = new AbortController();
+    setSearchIndexState("loading");
+    fetch(assetUrl("data/search-index.json"), { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        setSearchIndex(data);
+        setSearchIndexState("ready");
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setSearchIndexState("error");
+      });
+    return () => controller.abort();
+  }, [searchIndex, searchRequested]);
+
   const years = useMemo(
     () =>
       Object.keys(archive.meta.yearCounts)
@@ -127,8 +149,8 @@ export default function App() {
   const countries = useMemo(() => countEventsByCountry(archive.events), [archive.events]);
 
   const filteredEvents = useMemo(
-    () => filterEvents(archive.events, filters, deferredQuery),
-    [archive.events, deferredQuery, filters],
+    () => filterEvents(archive.events, filters, deferredQuery, searchIndex),
+    [archive.events, deferredQuery, filters, searchIndex],
   );
 
   // A URL-selected event resolves against the full archive so a shared link
@@ -341,7 +363,11 @@ export default function App() {
       <ActiveFilters
         filters={filters}
         resultCount={filteredEvents.length}
-        pending={isPending || deferredQuery !== filters.query}
+        pending={
+          isPending ||
+          deferredQuery !== filters.query ||
+          (searchRequested && searchIndexState === "loading")
+        }
         onClear={clearFilter}
         onReset={resetFromFilterBar}
       />

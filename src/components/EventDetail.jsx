@@ -9,6 +9,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { MissionDayTypeBadge } from "./MissionDayTypeBadge";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
@@ -126,6 +127,10 @@ export function EventDetail({
         <div>
           <dt>{t("region")}</dt>
           <dd>{event.region}</dd>
+        </div>
+        <div>
+          <dt>{t("missionDayType")}</dt>
+          <dd><MissionDayTypeBadge type={event.missionDayType} /></dd>
         </div>
         <div>
           <dt>{t("missionCount")}</dt>

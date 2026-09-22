@@ -16,6 +16,7 @@ const events = [
     country: "Japan",
     countryCode: "JP",
     region: "APAC",
+    missionDayType: "md-xma",
     status: "online",
     year: 2024,
     searchText: "First mission Second mission",
@@ -27,6 +28,7 @@ const events = [
     country: "Germany",
     countryCode: "DE",
     region: "EMEA",
+    missionDayType: "md-standard",
     status: "offline",
     year: 2023,
     searchText: "Historic route",
@@ -38,6 +40,7 @@ const events = [
     country: "Japan",
     countryCode: "JP",
     region: "APAC",
+    missionDayType: "md-lite",
     status: "online",
     year: null,
     searchText: "",
@@ -49,6 +52,7 @@ const events = [
     country: "Taiwan",
     countryCode: "TW",
     region: "APAC",
+    missionDayType: "md-standard",
     status: "online",
     year: 2024,
     searchText: "",
@@ -58,6 +62,20 @@ const events = [
 test("search includes deferred mission title text", () => {
   assert.equal(matchesQuery(events[0], "second mission"), true);
   assert.equal(matchesQuery(events[1], "second mission"), false);
+});
+
+test("standalone search index restores mission-title search for compact summaries", () => {
+  const compactEvents = events.map(({ searchText, ...event }) => event);
+  const searchIndex = Object.fromEntries(events.map((event) => [event.id, event.searchText]));
+  assert.deepEqual(
+    filterEvents(
+      compactEvents,
+      { ...INITIAL_FILTERS, query: "second mission" },
+      "second mission",
+      searchIndex,
+    ).map((event) => event.id),
+    ["a"],
+  );
 });
 
 test("sensitive region display aliases remain searchable", () => {
@@ -73,6 +91,16 @@ test("event filters combine year, region, status, and query", () => {
     region: "APAC",
     status: "online",
     query: "Tokyo",
+  };
+  assert.deepEqual(filterEvents(events, filters).map((event) => event.id), ["a"]);
+});
+
+test("Mission Day type combines with the other filters", () => {
+  const filters = {
+    ...INITIAL_FILTERS,
+    year: "2024",
+    region: "APAC",
+    missionDayType: "md-xma",
   };
   assert.deepEqual(filterEvents(events, filters).map((event) => event.id), ["a"]);
 });

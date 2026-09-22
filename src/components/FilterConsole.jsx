@@ -70,6 +70,18 @@ export function FilterConsole({ filters, years, countries = [], onFilterChange, 
         </select>
       </label>
       <label>
+        {t("missionDayType")}
+        <select
+          value={filters.missionDayType}
+          onChange={(event) => onFilterChange("missionDayType", event.target.value)}
+        >
+          <option value="all">{t("allMissionDayTypes")}</option>
+          <option value="md-xma">{t("mdTypeXma")}</option>
+          <option value="md-standard">{t("mdTypeStandard")}</option>
+          <option value="md-lite">{t("mdTypeLite")}</option>
+        </select>
+      </label>
+      <label>
         {t("status")}
         <select
           value={filters.status}
