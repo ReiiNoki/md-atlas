@@ -38,6 +38,7 @@ test("every event has its published detail file without depending on maintenance
     assert.equal(event.detailPath, `data/events/${filename}`);
     const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
     assert.equal(detail.id, event.id);
+    assert.equal(event.address, detail.address);
     assert.equal(detail.missionCount, event.missionCount);
     assert.ok(Array.isArray(detail.missions));
     if (!(event.status === "scheduled" && detail.missions.length === 0)) {

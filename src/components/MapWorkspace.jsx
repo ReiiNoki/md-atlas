@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
+import { ListFilter } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
-import { displayCityName } from "../utils/locations";
+import { eventMapTitle } from "../utils/eventMapLabel";
 import { EventDetail } from "./EventDetail";
 import { EventFeed } from "./EventFeed";
 import { ViewLoading } from "./ViewLoading";
@@ -18,10 +19,12 @@ export function MapWorkspace({
   onFeedRegionChange,
   onOpenArchive,
   feedOpen,
+  onOpenFeed,
+  onCloseFeed,
   detailOpen,
   onCloseDetail,
 }) {
-  const { formatNumber, language, t } = useLanguage();
+  const { formatNumber, t } = useLanguage();
 
   return (
     <>
@@ -36,7 +39,7 @@ export function MapWorkspace({
       {selectedEvent ? (
         <div className="selection-strip">
           <i />
-          <strong title={selectedEvent.city}>{displayCityName(selectedEvent.countryCode, selectedEvent.city, language)}</strong>
+          <strong title={eventMapTitle(selectedEvent)}>{eventMapTitle(selectedEvent)}</strong>
           <span>/</span>
           <time>{selectedEvent.date ?? t("dateUnknown")}</time>
           <span>/</span>
@@ -54,12 +57,27 @@ export function MapWorkspace({
         </div>
       ) : null}
 
+      {!feedOpen ? (
+        <button
+          className="intel-tool-button map-activity-button"
+          type="button"
+          title={t("activity")}
+          aria-label={t("activity")}
+          aria-controls="event-feed"
+          aria-expanded="false"
+          onClick={onOpenFeed}
+        >
+          <ListFilter size={18} strokeWidth={1.35} />
+        </button>
+      ) : null}
+
       <EventFeed
         events={feedEvents}
         region={feedRegion}
         onRegionChange={onFeedRegionChange}
         onSelect={onSelect}
         onOpenArchive={onOpenArchive}
+        onClose={onCloseFeed}
         open={feedOpen}
       />
 

@@ -1,19 +1,18 @@
 @layer utilities {
   @media (max-width: 1100px) {
-    .intel-topbar { grid-template-columns: 144px minmax(190px, .8fr) minmax(150px, 1fr) 48px 48px 48px; gap: 12px; padding-right: 16px; padding-left: 16px; }
+    .intel-topbar { grid-template-columns: 144px minmax(190px, .8fr) minmax(150px, 1fr) 48px 48px; gap: 12px; padding-right: 16px; padding-left: 16px; }
     .intel-totals, .intel-select--region, .intel-select--year { display: none; }
     .intel-brand__text small { display: none; }
     .intel-tabs { grid-column: 2; }
     .intel-search { grid-column: 3; }
-    .intel-activity-button { grid-column: 4; }
-    .intel-filter-button { grid-column: 5; }
-    .intel-language-picker { grid-column: 6; }
+    .intel-filter-button { grid-column: 4; }
+    .intel-language-picker { grid-column: 5; }
     .archive-layout:not(.detail-closed) { grid-template-columns: minmax(0, 1fr) 360px; }
   }
   @media (max-width: 760px) {
     :root { --statusbar-height: 110px; }
     body { overflow: hidden; }
-    .intel-topbar { height: auto; grid-template-columns: minmax(0, 1fr) repeat(4, 44px); grid-template-rows: 48px 48px; gap: 0 8px; padding: 0 16px; }
+    .intel-topbar { height: auto; grid-template-columns: minmax(0, 1fr) repeat(3, 44px); grid-template-rows: 48px 48px; gap: 0 8px; padding: 0 16px; }
     .intel-topbar.has-search { grid-template-rows: 48px 48px 52px; }
     .intel-brand { grid-column: 1; grid-row: 1; font-size: 22px; }
     .intel-tabs { grid-column: 1 / -1; grid-row: 2; width: 100%; height: 44px; margin: 0; }
@@ -24,9 +23,8 @@
     .intel-search input { font-size: 16px; }
     .intel-search button { width: 44px; height: 44px; flex: 0 0 44px; }
     .intel-tool-button { grid-row: 1; align-self: center; width: 44px; height: 44px; }
-    .intel-activity-button { grid-column: 3; }
-    .intel-filter-button { grid-column: 4; }
-    .intel-language-picker { grid-column: 5; grid-row: 1; align-self: center; width: 44px; height: 44px; }
+    .intel-filter-button { grid-column: 3; }
+    .intel-language-picker { grid-column: 4; grid-row: 1; align-self: center; width: 44px; height: 44px; }
     .intel-language-button { width: 44px; height: 44px; }
     .intel-language-menu { top: calc(100% + 2px); }
     .intel-statusbar { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 7px 10px; font-size: 10px; }

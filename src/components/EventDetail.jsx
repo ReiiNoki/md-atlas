@@ -13,7 +13,7 @@ import { MissionDayTypeBadge } from "./MissionDayTypeBadge";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
-import { displayCityName, displayCountryName } from "../utils/locations";
+import { eventMapLocation, eventMapTitle } from "../utils/eventMapLabel";
 
 const formatCoordinate = (value, positive, negative, fallback) => {
   if (typeof value !== "number") return fallback;
@@ -74,6 +74,8 @@ export function EventDetail({
   if (!event) return null;
   const missions = event.missions ?? [];
   const coordinatesAvailable = hasCoordinates(event);
+  const mapTitle = eventMapTitle(event);
+  const mixedTitle = /\p{Script=Han}/u.test(mapTitle) && /[A-Za-z]/.test(mapTitle);
 
   return (
     <aside
@@ -88,8 +90,14 @@ export function EventDetail({
       <div className="detail-panel__heading">
         <div className="detail-panel__identity">
           <span className="section-code">{compact ? t("selectedEvent") : t("eventDossier")}</span>
-          <h2 id="event-detail-title" title={event.city}>{displayCityName(event.countryCode, event.city, language)}</h2>
-          <p>{displayCountryName(event.countryCode, event.country, language)}</p>
+          <h2 id="event-detail-title" title={mapTitle}>
+            {mixedTitle ? mapTitle.split(/(\p{Script=Han}+)/u).map((part, index) =>
+              /\p{Script=Han}/u.test(part)
+                ? <span className="detail-panel__han" key={index}>{part}</span>
+                : part,
+            ) : mapTitle}
+          </h2>
+          <p title={eventMapLocation(event, language)}>{eventMapLocation(event, language)}</p>
         </div>
         <div className="detail-actions">
           {event.url ? (

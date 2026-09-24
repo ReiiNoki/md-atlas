@@ -1,4 +1,4 @@
-import { ExternalLink, Radio } from "lucide-react";
+import { ExternalLink, Radio, X } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
 import { displayCityName, displayCountryName } from "../utils/locations";
@@ -11,12 +11,14 @@ export function EventFeed({
   onRegionChange,
   onSelect,
   onOpenArchive,
+  onClose,
   open,
 }) {
   const { formatNumber, language, t } = useLanguage();
 
   return (
     <section
+      id="event-feed"
       className={`event-feed ${open ? "is-open" : ""}`}
       aria-label={t("activityFeed")}
       aria-hidden={!open}
@@ -39,6 +41,15 @@ export function EventFeed({
             </button>
           ))}
         </nav>
+        <button
+          className="event-feed__close"
+          type="button"
+          title={t("closeActivityFeed")}
+          aria-label={t("closeActivityFeed")}
+          onClick={onClose}
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
       </header>
 
       <div className="event-feed__rows">

@@ -360,12 +360,6 @@ export default function App() {
         onFilterChange={updateFilter}
         filtersOpen={filterConsoleOpen}
         onToggleFilters={() => setFilterConsoleOpen((open) => !open)}
-        feedOpen={feedOpen}
-        onToggleFeed={() => {
-          urlWriteModeRef.current = "push";
-          setActiveView("map");
-          setFeedOpen((open) => !open);
-        }}
         activeFilterCount={activeFilterEntries(filters).length}
         filterButtonRef={filterButtonRef}
       />
@@ -396,6 +390,8 @@ export default function App() {
               onFeedRegionChange={setFeedRegion}
               onOpenArchive={() => changeView("archive")}
               feedOpen={feedOpen}
+              onOpenFeed={() => setFeedOpen(true)}
+              onCloseFeed={() => setFeedOpen(false)}
               detailOpen={detailOpen}
               onCloseDetail={() => setDetailOpen(false)}
             />

@@ -4,7 +4,7 @@ import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { LocateFixed, Minus, Plus } from "lucide-react";
 import { applyMapLanguage, createIntelMapStyle } from "../data/intelMapStyle";
 import { useLanguage } from "../i18n.jsx";
-import { displayCityName, displayCountryName } from "../utils/locations";
+import { eventMapLocation, eventMapTitle } from "../utils/eventMapLabel";
 
 // MapLibre 6 ships its worker separately; let Vite bundle its imports and
 // resolve the URL for both root and subdirectory deployments.
@@ -20,9 +20,11 @@ function toGeoJson(events, selectedId) {
         geometry: { type: "Point", coordinates: [event.lng, event.lat] },
         properties: {
           id: event.id,
+          title: event.title,
           city: event.city,
           country: event.country,
           countryCode: event.countryCode,
+          address: event.address ?? "",
           date: event.date ?? "—",
           selected: event.id === selectedId,
         },
@@ -35,9 +37,9 @@ function createPopupContent(properties, language) {
   content.className = "mission-map-popup__body";
   const title = document.createElement("strong");
   const meta = document.createElement("span");
-  title.textContent = displayCityName(properties.countryCode, properties.city, language);
-  title.title = properties.city;
-  meta.textContent = `${displayCountryName(properties.countryCode, properties.country, language)} / ${properties.date}`;
+  title.textContent = eventMapTitle(properties);
+  title.title = eventMapTitle(properties);
+  meta.textContent = `${eventMapLocation(properties, language)} / ${properties.date}`;
   content.append(title, meta);
   return content;
 }

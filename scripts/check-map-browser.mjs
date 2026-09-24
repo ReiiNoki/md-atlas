@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { displayCityName } from "../src/utils/locations.js";
+import { eventMapLocation } from "../src/utils/eventMapLabel.js";
 import { MAP_LABEL_SOURCE } from "../src/data/intelMapStyle.js";
 import { labelTile } from "./map-browser-fixtures.mjs";
 import { BASE_PATH } from "../site.config.js";
@@ -49,7 +50,8 @@ const firstMissionRow = events.findIndex(e => e.missionCount > 0);
 const firstMissionEvent = events[firstMissionRow];
 const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
-const missionCityZh = displayCityName(firstMissionEvent.countryCode, firstMissionEvent.city, "zh");
+const firstLocationZh = eventMapLocation(firstEvent, "zh");
+const missionLocationZh = eventMapLocation(firstMissionEvent, "zh");
 const workerPreview = workers ? await startWorkersPreview(artifacts) : null;
 const origin = workerPreview?.origin ?? `http://127.0.0.1:${port}`;
 const pageUrl = origin + BASE_PATH;
@@ -259,21 +261,41 @@ try {
   assert.equal(await labelPixels("zh-final"), chinesePixels);
   const labelReloadAborts = await evaluate("window.__mapReloads.aborted");
 
+  assert.ok(await visible(".event-feed.is-open"), "Event feed starts open");
+  assert.equal(await visible(".map-activity-button"), false, "Activity button stays hidden while feed is open");
+  await click(".event-feed__close");
+  await waitFor(() => visible(".map-activity-button"), "map activity button");
+  assert.equal(await visible(".event-feed.is-open"), false, "Close button hides event feed");
+  await click(".map-activity-button");
+  await waitFor(() => visible(".event-feed.is-open"), "reopened event feed");
+  assert.equal(await visible(".map-activity-button"), false, "Reopening feed hides activity button");
+
   const point = await evaluate(`(() => {
     const r = document.querySelector('.mission-map canvas').getBoundingClientRect();
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   })()`);
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", ...point });
   await waitFor(() => visible(".mission-map-popup__body"), "marker popup");
-  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstCityZh);
-  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), firstCityZh);
+  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.title);
+  assert.ok(await evaluate(`document.querySelector('.mission-map-popup__body span').textContent.includes(${JSON.stringify(firstLocationZh)})`));
+  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), firstEvent.title);
   await evaluate("window.__smokeCanvas = document.querySelector('.mission-map canvas')");
   await selectLanguage("en");
-  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.city);
+  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.title);
   assert.ok(await evaluate("window.__smokeCanvas === document.querySelector('.mission-map canvas')"));
   await send("Input.dispatchMouseEvent", { type: "mousePressed", button: "left", clickCount: 1, ...point });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", button: "left", clickCount: 1, ...point });
   await waitFor(() => visible(".detail-panel.is-open"), "marker selection");
+  assert.ok(await evaluate(`(() => {
+    const h = document.querySelector('.intel-workspace--map .detail-panel__heading');
+    const r = h.getBoundingClientRect();
+    const c = h.querySelector('button').getBoundingClientRect();
+    const m = h.querySelector('.detail-actions__map').getBoundingClientRect();
+    return c.top - r.top <= 4 && Math.abs(r.right - c.right - 17) <= 2 &&
+      Math.abs(c.right - m.right) <= 2 && m.top - c.bottom >= 2;
+  })()`), "Desktop drawer actions share a right edge without overlapping");
+  const desktopDetailScreenshot = await send('Page.captureScreenshot');
+  await writeFile(join(artifacts, 'detail-desktop.png'), Buffer.from(desktopDetailScreenshot.data, 'base64'));
   await click(".detail-panel__heading button");
   await click(".map-control-dock button:first-child");
   await click(".map-control-dock button:nth-child(2)");
@@ -334,7 +356,8 @@ try {
   ));
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
-  assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), missionCityZh);
+  assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), firstMissionEvent.title);
+  assert.equal(await evaluate("document.querySelector('.detail-panel__identity p').textContent"), missionLocationZh);
   assert.ok(await evaluate(`(() => {
     const heading = document.querySelector('.detail-panel__heading');
     const actions = heading.querySelector('.detail-actions');
@@ -348,9 +371,16 @@ try {
     const b = banner.getBoundingClientRect();
     const m = map.getBoundingClientRect();
     const c = close.getBoundingClientRect();
+    const han = heading.querySelector('h2 .detail-panel__han');
     return b.top >= h.top && b.bottom <= h.bottom && m.top >= h.top &&
-      m.bottom <= h.bottom && b.right <= m.left && m.right <= c.left;
-  })()`), "Banner and map links belong in the detail header without overlapping the close button");
+      m.bottom <= h.bottom && b.right <= m.left && Math.abs(c.right - m.right) <= 2 &&
+      m.top - c.bottom >= 2 && c.right <= h.right &&
+      h.right - c.right >= 11 && h.right - c.right <= 14 &&
+      c.top >= h.top && c.top - h.top <= 4 &&
+      close.querySelector('svg').getBoundingClientRect().top >= h.top &&
+      close.querySelector('svg').getBoundingClientRect().top - h.top <= 6 &&
+      (!han || parseFloat(getComputedStyle(han).fontSize) < parseFloat(getComputedStyle(han.parentElement).fontSize));
+  })()`), "Detail header keeps mixed-script title balanced and separates the raised close button");
   const detailScreenshot = await send("Page.captureScreenshot");
   await writeFile(join(artifacts, "detail-mobile.png"), Buffer.from(detailScreenshot.data, "base64"));
 
@@ -381,6 +411,33 @@ try {
   await click('.detail-loading--error button');
   await waitFor(() => visible('.mission-row'), "mission detail retry");
   assert.equal(await visible('.detail-loading--error'), false);
+  await click('.detail-panel__heading button');
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '恆春');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(() => evaluate("document.querySelector('.event-row__place strong')?.textContent.includes('屏东')"), "Hengchun archive row");
+  await click('.event-row');
+  await waitFor(() => evaluate("document.querySelector('#event-detail-title')?.textContent.includes('恆春')"), "mixed-script detail title");
+  await sleep(250);
+  assert.ok(await evaluate(`(() => {
+    const heading = document.querySelector('.detail-panel__heading');
+    const han = heading.querySelector('.detail-panel__han');
+    const close = heading.querySelector('button');
+    const map = heading.querySelector('.detail-actions__map');
+    const c = close.getBoundingClientRect();
+    const m = map.getBoundingClientRect();
+    return han && parseFloat(getComputedStyle(han).fontSize) < parseFloat(getComputedStyle(han.parentElement).fontSize) &&
+      Math.abs(c.right - m.right) <= 2 && m.top - c.bottom >= 2;
+  })()`), "Han glyphs are optically balanced and header controls align without overlapping");
+  const mixedScreenshot = await send('Page.captureScreenshot');
+  await writeFile(join(artifacts, 'detail-han-mobile.png'), Buffer.from(mixedScreenshot.data, 'base64'));
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
   await view(3);
   await waitFor(() => visible(".calendar-days"), "calendar");
   assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`));
