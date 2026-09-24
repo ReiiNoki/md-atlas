@@ -10,6 +10,7 @@ export function ArchiveView({
   detailOpen,
   onCloseDetail,
   detailLoadState,
+  onRetryDetail,
   visibleCount,
   onLoadMore,
   isPending,
@@ -44,6 +45,7 @@ export function ArchiveView({
           open={detailOpen}
           loading={detailLoadState === "loading"}
           loadError={detailLoadState === "error"}
+          onRetryDetail={onRetryDetail}
           onClose={onCloseDetail}
         />
       </div>

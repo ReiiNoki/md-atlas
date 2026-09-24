@@ -60,9 +60,9 @@
     display: flex; align-items: center; justify-content: center; gap: 8px;
     color: var(--color-text-secondary); font-size: 14px;
   }
-  .view-loading { width: 100%; height: 100%; min-height: 180px; }
+  .view-loading { width: 100%; height: 100%; min-height: 180px; flex-wrap: wrap; padding: 16px; text-align: center; }
   .view-loading__spinner, .detail-loading svg { animation: rotate 900ms linear infinite; }
-  .detail-loading { min-height: 72px; padding: 16px; text-align: center; }
+  .detail-loading { min-height: 72px; flex-wrap: wrap; padding: 16px; text-align: center; }
   .map-state { position: absolute; top: 16px; left: 50%; z-index: 500; min-height: 40px; padding: 8px 14px; border-radius: var(--radius-sm); background: rgb(17 25 30 / 94%); transform: translateX(-50%); }
   .map-state--error, .detail-loading--error { color: var(--color-red); }
 

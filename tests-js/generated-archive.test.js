@@ -70,7 +70,22 @@ test("every event has one audited Mission Day type", () => {
     );
     counts[event.missionDayType] = (counts[event.missionDayType] ?? 0) + 1;
   }
-  assert.deepEqual({ ...counts }, { "md-xma": 222, "md-lite": 11, "md-standard": 544 });
+  assert.deepEqual({ ...counts }, { "md-xma": 223, "md-lite": 11, "md-standard": 544 });
+});
+
+test("the 2026 Denver banner replaces its placeholder without overwriting the 2016 event", async () => {
+  const denver = archive.events.find((event) => event.id === "md2026-denver-ff0a");
+  assert.equal(archive.events.some((event) => event.id === "scheduled-md-2026-denver"), false);
+  assert.equal(denver.date, "2026-09-20");
+  assert.equal(denver.missionDayType, "md-xma");
+  assert.equal(denver.status, "online");
+  assert.equal(denver.missionCount, 24);
+  const detail = JSON.parse(await readFile(new URL(denver.detailPath, publicRoot), "utf8"));
+  assert.equal(detail.missions.length, 24);
+  assert.ok(detail.missions.every((mission) => mission.author === "NIAMission02"));
+  assert.ok(detail.missions.every((mission) => mission.authorFaction === "ENLIGHTENED"));
+  assert.ok(detail.missions.every((mission) => typeof mission.rating === "number" && mission.rating >= 0 && mission.rating <= 100));
+  assert.ok(archive.events.some((event) => event.id === "md-denver-a948" && event.date === "2016-08-28"));
 });
 
 test("mission search text is deferred to a complete standalone index", () => {

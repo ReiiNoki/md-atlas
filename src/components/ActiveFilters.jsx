@@ -24,7 +24,7 @@ const filterLabels = {
   query: (value, t) => t("searchFilterLabel", { value }),
 };
 
-export function ActiveFilters({ filters, resultCount, pending = false, onClear, onReset }) {
+export function ActiveFilters({ filters, resultCount, searchState = "ready", pending = false, onClear, onReset }) {
   const { formatNumber, language, t } = useLanguage();
   const chipsRef = useRef(null);
   const entries = activeFilterEntries(filters);
@@ -54,8 +54,10 @@ export function ActiveFilters({ filters, resultCount, pending = false, onClear, 
           </button>
         ))}
       </div>
-      <strong role="status" aria-live="polite" aria-atomic="true" aria-busy={pending}>
-        {t("filteredResults", { count: formatNumber(resultCount) })}
+      <strong role="status" aria-live="polite" aria-atomic="true" aria-busy={pending || searchState === "loading"}>
+        {searchState === "ready"
+          ? t("filteredResults", { count: formatNumber(resultCount) })
+          : t(searchState === "error" ? "searchResultsUnavailable" : "searchResultsPending")}
       </strong>
       <button className="active-filters__reset" type="button" onClick={onReset}>
         {t("clearAllFilters")}

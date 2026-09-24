@@ -53,6 +53,7 @@ export default function App() {
   const [archive, setArchive] = useState({ meta: EMPTY_META, events: [] });
   const [searchIndex, setSearchIndex] = useState(null);
   const [searchIndexState, setSearchIndexState] = useState("idle");
+  const [searchAttempt, setSearchAttempt] = useState(0);
   const [loadState, setLoadState] = useState("loading");
   const [loadError, setLoadError] = useState("");
   const [analytics, setAnalytics] = useState(null);
@@ -61,6 +62,7 @@ export default function App() {
   const [analyticsAttempt, setAnalyticsAttempt] = useState(0);
   const [eventDetails, setEventDetails] = useState({});
   const [detailLoadState, setDetailLoadState] = useState("idle");
+  const [detailAttempt, setDetailAttempt] = useState(0);
   const [activeView, setActiveView] = useState(initialUrlState.view);
   const [filters, setFilters] = useState(initialUrlState.filters);
   const [feedRegion, setFeedRegion] = useState("all");
@@ -76,7 +78,14 @@ export default function App() {
     setViewEpochs((current) => ({ ...current, [view]: current[view] + 1 }));
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(filters.query);
-  const searchRequested = Boolean(deferredQuery.trim());
+  const searchRequested = Boolean(filters.query.trim());
+  // Mission titles live only in the separate index. Never present summary-only
+  // matches as complete results while that index is missing.
+  const searchBlocked = searchRequested && !searchIndex;
+  const retrySearch = () => {
+    setSearchIndexState("loading");
+    setSearchAttempt((attempt) => attempt + 1);
+  };
   const filterButtonRef = useRef(null);
   // URL bookkeeping: whether the current selection was user/url requested, and
   // how the next effect-driven write should land in history (typing replaces,
@@ -134,7 +143,7 @@ export default function App() {
         if (error.name !== "AbortError") setSearchIndexState("error");
       });
     return () => controller.abort();
-  }, [searchIndex, searchRequested]);
+  }, [searchAttempt, searchIndex, searchRequested]);
 
   const years = useMemo(
     () =>
@@ -194,7 +203,7 @@ export default function App() {
         if (error.name !== "AbortError") setDetailLoadState("error");
       });
     return () => controller.abort();
-  }, [activeView, detailOpen, eventDetails, selectedEvent]);
+  }, [activeView, detailAttempt, detailOpen, eventDetails, selectedEvent]);
 
   useEffect(() => {
     if (activeView !== "data" || analytics) return;
@@ -363,17 +372,20 @@ export default function App() {
       <ActiveFilters
         filters={filters}
         resultCount={filteredEvents.length}
-        pending={
-          isPending ||
-          deferredQuery !== filters.query ||
-          (searchRequested && searchIndexState === "loading")
-        }
+        searchState={searchBlocked ? (searchIndexState === "error" ? "error" : "loading") : "ready"}
+        pending={isPending || deferredQuery !== filters.query}
         onClear={clearFilter}
         onReset={resetFromFilterBar}
       />
 
       <main className={`intel-workspace intel-workspace--${activeView}`}>
-        {activeView === "map" ? (
+        {searchBlocked ? (
+          <ViewLoading
+            label={t(searchIndexState === "error" ? "searchIndexLoadFailed" : "loadingSearchIndex")}
+            onRetry={searchIndexState === "error" ? retrySearch : undefined}
+          />
+        ) : null}
+        {!searchBlocked && activeView === "map" ? (
           <ViewErrorBoundary key={`map-${viewEpochs.map}`} fallback={ViewCrashFallback}>
             <MapWorkspace
               events={filteredEvents}
@@ -390,7 +402,7 @@ export default function App() {
           </ViewErrorBoundary>
         ) : null}
 
-        {activeView === "archive" ? (
+        {!searchBlocked && activeView === "archive" ? (
           <ViewErrorBoundary key={`archive-${viewEpochs.archive}`} fallback={ViewCrashFallback}>
             <ArchiveView
               events={filteredEvents}
@@ -400,6 +412,10 @@ export default function App() {
               detailOpen={detailOpen}
               onCloseDetail={() => setDetailOpen(false)}
               detailLoadState={detailLoadState}
+              onRetryDetail={() => {
+                setDetailLoadState("loading");
+                setDetailAttempt((attempt) => attempt + 1);
+              }}
               visibleCount={visibleCount}
               onLoadMore={() => setVisibleCount((count) => count + 60)}
               isPending={isPending}
@@ -408,7 +424,7 @@ export default function App() {
           </ViewErrorBoundary>
         ) : null}
 
-        {activeView === "calendar" ? (
+        {!searchBlocked && activeView === "calendar" ? (
           <RetryableLazyView
             load={loadCalendarView}
             epoch={viewEpochs.calendar}
@@ -417,7 +433,7 @@ export default function App() {
           />
         ) : null}
 
-        {activeView === "data" ? (
+        {!searchBlocked && activeView === "data" ? (
           analyticsState === "ready" ? (
             <RetryableLazyView
               load={loadDataView}

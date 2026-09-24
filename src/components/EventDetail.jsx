@@ -35,6 +35,7 @@ export function EventDetail({
   compact = false,
   loading = false,
   loadError = false,
+  onRetryDetail,
 }) {
   const { formatNumber, language, t } = useLanguage();
   const panelRef = useRef(null);
@@ -210,7 +211,12 @@ export function EventDetail({
           ) : null}
           {loadError ? (
             <div className="detail-loading detail-loading--error" role="alert">
-              {t("missionDetailsLoadFailed")}
+              <span>{t("missionDetailsLoadFailed")}</span>
+              {onRetryDetail ? (
+                <button className="command-button" type="button" onClick={onRetryDetail}>
+                  {t("retry")}
+                </button>
+              ) : null}
             </div>
           ) : null}
           {!loading && !loadError && !missions.length ? (

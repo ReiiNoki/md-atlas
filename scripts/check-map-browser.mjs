@@ -43,8 +43,13 @@ const port = await new Promise((resolve, reject) => {
     socket.close(() => resolve(port));
   });
 });
-const { events: [firstEvent] } = JSON.parse(await readFile(resolve(root, "public/data/archive.json"), "utf8"));
+const { events } = JSON.parse(await readFile(resolve(root, "public/data/archive.json"), "utf8"));
+const firstEvent = events[0];
+const firstMissionRow = events.findIndex(e => e.missionCount > 0);
+const firstMissionEvent = events[firstMissionRow];
+const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
+const missionCityZh = displayCityName(firstMissionEvent.countryCode, firstMissionEvent.city, "zh");
 const workerPreview = workers ? await startWorkersPreview(artifacts) : null;
 const origin = workerPreview?.origin ?? `http://127.0.0.1:${port}`;
 const pageUrl = origin + BASE_PATH;
@@ -78,6 +83,7 @@ const pending = new Map();
 const errors = [];
 const consoleMessages = [];
 let cancelledInterceptions = 0;
+const failNext = { searchIndex: 0, eventDetail: 0 };
 function send(method, params = {}) {
   const id = ++nextId;
   return new Promise((resolve, reject) => {
@@ -95,6 +101,20 @@ async function evaluate(expression) {
   return result.result.value;
 }
 async function intercept({ requestId, request }) {
+  if (request.url.endsWith("/data/search-index.json") && failNext.searchIndex > 0) {
+    failNext.searchIndex -= 1;
+    await send("Fetch.failRequest", { requestId, errorReason: "Failed" });
+    return;
+  }
+  if (request.url.includes("/data/events/") && failNext.eventDetail > 0) {
+    failNext.eventDetail -= 1;
+    await send("Fetch.failRequest", { requestId, errorReason: "Failed" });
+    return;
+  }
+  if (request.url.includes("/data/")) {
+    await send("Fetch.continueRequest", { requestId });
+    return;
+  }
   let body = labelTile, type = "application/x-protobuf";
   if (request.url.endsWith("/planet")) {
     type = "application/json";
@@ -156,7 +176,7 @@ try {
   });
   await send("Page.enable");
   await send("Runtime.enable");
-  await send("Fetch.enable", { patterns: [{ urlPattern: "*tiles.openfreemap.org/*" }, { urlPattern: "*api.bannergress.com/*" }] });
+  await send("Fetch.enable", { patterns: [{ urlPattern: "*tiles.openfreemap.org/*" }, { urlPattern: "*api.bannergress.com/*" }, { urlPattern: "*/data/search-index.json" }, { urlPattern: "*/data/events/*" }] });
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `
     // MapLibre 6 Worker protocol, observed only in this isolated test browser.
@@ -312,9 +332,37 @@ try {
   assert.ok(await evaluate(
     "document.querySelector('.intel-statusbar__legal').textContent.includes('数据来源于 Bannergress')",
   ));
-  await click(".event-row");
+  await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
-  assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), firstCityZh);
+  assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), missionCityZh);
+
+  // Mission-title matches must not be reported from summary-only data, and a
+  // failed index request must recover without reloading or clearing the query.
+  failNext.searchIndex = 1;
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(firstEvent.city)});
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(() => visible('.view-loading[role="alert"]'), "search index error");
+  assert.equal(await visible('.event-row'), false, "Partial search results must stay hidden");
+  assert.ok(await evaluate("document.querySelector('.active-filters strong').textContent.includes('暂不可用')"));
+  await click('.view-loading button');
+  await waitFor(() => visible('.event-row'), "search index retry");
+  assert.ok(await evaluate("document.querySelector('.active-filters strong').textContent.includes('项结果')"));
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(() => visible('.event-row:nth-child(2)'), "clear search");
+
+  failNext.eventDetail = 1;
+  await click(`.event-row:nth-child(${secondMissionRow + 1})`);
+  await waitFor(() => visible('.detail-loading--error button'), "mission detail error");
+  await click('.detail-loading--error button');
+  await waitFor(() => visible('.mission-row'), "mission detail retry");
+  assert.equal(await visible('.detail-loading--error'), false);
   await view(3);
   await waitFor(() => visible(".calendar-days"), "calendar");
   assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`));
@@ -336,7 +384,7 @@ try {
   assert.ok(await evaluate("document.querySelector('.map-state--unavailable').textContent.includes('WebGL2')"));
   await view(2);
   await waitFor(() => visible(".event-row"), "archive without GPU");
-  await click(".event-row");
+  await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details without GPU");
   await view(1);
   await waitFor(() => visible(".map-state--unavailable"), "fallback remount");
