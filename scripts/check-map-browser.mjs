@@ -335,6 +335,24 @@ try {
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
   assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), missionCityZh);
+  assert.ok(await evaluate(`(() => {
+    const heading = document.querySelector('.detail-panel__heading');
+    const actions = heading.querySelector('.detail-actions');
+    const banner = actions?.querySelector('a.detail-actions__banner');
+    const map = actions?.querySelector('.detail-actions__map');
+    const close = heading.querySelector('button');
+    if (!banner || !map || !close ||
+        banner.title !== '查看 Banner' || banner.getAttribute('aria-label') !== banner.title ||
+        !banner.querySelector('img[src$="bannergress-logo.png"]')) return false;
+    const h = heading.getBoundingClientRect();
+    const b = banner.getBoundingClientRect();
+    const m = map.getBoundingClientRect();
+    const c = close.getBoundingClientRect();
+    return b.top >= h.top && b.bottom <= h.bottom && m.top >= h.top &&
+      m.bottom <= h.bottom && b.right <= m.left && m.right <= c.left;
+  })()`), "Banner and map links belong in the detail header without overlapping the close button");
+  const detailScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "detail-mobile.png"), Buffer.from(detailScreenshot.data, "base64"));
 
   // Mission-title matches must not be reported from summary-only data, and a
   // failed index request must recover without reloading or clearing the query.

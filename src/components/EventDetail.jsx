@@ -86,10 +86,44 @@ export function EventDetail({
       inert={!open}
     >
       <div className="detail-panel__heading">
-        <div>
+        <div className="detail-panel__identity">
           <span className="section-code">{compact ? t("selectedEvent") : t("eventDossier")}</span>
           <h2 id="event-detail-title" title={event.city}>{displayCityName(event.countryCode, event.city, language)}</h2>
           <p>{displayCountryName(event.countryCode, event.country, language)}</p>
+        </div>
+        <div className="detail-actions">
+          {event.url ? (
+            <a
+              className="icon-button detail-actions__banner"
+              href={event.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={event.status === "scheduled" ? t("viewOfficialSchedule") : t("viewBanner")}
+              title={event.status === "scheduled" ? t("viewOfficialSchedule") : t("viewBanner")}
+            >
+              {event.status === "scheduled" ? (
+                <ExternalLink size={18} aria-hidden="true" />
+              ) : (
+                <img src={`${import.meta.env.BASE_URL}bannergress-logo.png`} alt="" aria-hidden="true" />
+              )}
+            </a>
+          ) : (
+            <span className="icon-button detail-actions__banner is-disabled" role="img" aria-label={t("bannerUnavailable")} title={t("bannerUnavailable")}>
+              <img src={`${import.meta.env.BASE_URL}bannergress-logo.png`} alt="" aria-hidden="true" />
+            </span>
+          )}
+          {coordinatesAvailable ? (
+            <a
+              className="icon-button detail-actions__map"
+              href={`https://www.google.com/maps?q=${event.lat},${event.lng}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t("openInMap")}
+              title={t("openInMap")}
+            >
+              <MapPin size={18} strokeWidth={1.45} />
+            </a>
+          ) : null}
         </div>
         <button
           className="icon-button icon-button--quiet"
@@ -167,29 +201,6 @@ export function EventDetail({
           </dd>
         </div>
       </dl>
-
-      <div className="detail-actions">
-        {event.url ? (
-          <a className="command-button" href={event.url} target="_blank" rel="noreferrer">
-            {event.status === "scheduled" ? t("viewOfficialSchedule") : t("viewBanner")}
-            <ExternalLink size={16} />
-          </a>
-        ) : (
-          <span className="command-button is-disabled">{t("bannerUnavailable")}</span>
-        )}
-        {coordinatesAvailable ? (
-          <a
-            className="icon-button detail-actions__map"
-            href={`https://www.google.com/maps?q=${event.lat},${event.lng}`}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={t("openInMap")}
-            title={t("openInMap")}
-          >
-            <MapPin size={18} strokeWidth={1.45} />
-          </a>
-        ) : null}
-      </div>
 
       {!compact ? (
         <div className="mission-list" aria-busy={loading}>
