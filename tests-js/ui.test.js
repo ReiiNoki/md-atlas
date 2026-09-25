@@ -51,6 +51,17 @@ test("footer legal notices and external icon links are complete", () => {
   assert.doesNotMatch(footer, /city-name-credits\.html/);
 });
 
+test("mobile map starts unobstructed and keeps compact overlays available", () => {
+  const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const responsive = readFileSync(new URL("../src/styles/responsive.css", import.meta.url), "utf8");
+  const map = readFileSync(new URL("../src/styles/views/map.css", import.meta.url), "utf8");
+  assert.match(app, /matchMedia\?\.\("\(max-width: 760px\)"\)\.matches/);
+  assert.match(app, /intel-shell intel-shell--\$\{activeView\}/);
+  assert.match(responsive, /\.intel-shell--map \.intel-statusbar \{ display: none; \}/);
+  assert.match(responsive, /\.intel-search \{ position: absolute;/);
+  assert.match(map, /\.event-feed__rows > button:nth-child\(n \+ 3\) \{ display: none; \}/);
+});
+
 const tokens = readFileSync(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
 function token(name) {
   const match = tokens.match(new RegExp(`--${name}:\\s*(#[a-f0-9]{6});`, "i"));

@@ -68,7 +68,11 @@ export default function App() {
   const [feedRegion, setFeedRegion] = useState("all");
   const [selectedId, setSelectedId] = useState(initialUrlState.event);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(true);
+  // Keep the map unobstructed on a phone while preserving the desktop activity
+  // panel. The panel remains one tap away from the map toolbar.
+  const [feedOpen, setFeedOpen] = useState(
+    () => !window.matchMedia?.("(max-width: 760px)").matches,
+  );
   const [filterConsoleOpen, setFilterConsoleOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(60);
   // Per-view retry epochs: bumping reruns the chunk import and remounts the
@@ -352,7 +356,7 @@ export default function App() {
   }
 
   return (
-    <div className="intel-shell">
+    <div className={`intel-shell intel-shell--${activeView}`}>
       <TopBar
         activeView={activeView}
         onViewChange={changeView}

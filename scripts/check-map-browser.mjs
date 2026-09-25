@@ -307,12 +307,33 @@ try {
     const label = document.querySelector('.event-feed > header > span').getBoundingClientRect();
     const nav = document.querySelector('.event-feed nav').getBoundingClientRect();
     const selection = document.querySelector('.selection-strip').getBoundingClientRect();
+    const attribution = document.querySelector('.maplibregl-ctrl-attrib').getBoundingClientRect();
     const visibleRows = [...document.querySelectorAll('.event-feed__rows > button')]
       .filter((row) => getComputedStyle(row).display !== 'none');
-    return feed.height <= 251 && nav.top >= label.bottom && visibleRows.length === 3 &&
-      feed.top - selection.bottom >= 100;
+    return feed.height <= 207 && nav.top >= label.bottom && visibleRows.length === 2 &&
+      feed.top - selection.bottom >= 100 && feed.bottom <= attribution.top;
   })()`), "Mobile event feed uses a compact two-row header and leaves the map visible");
   assert.ok(await visible(".maplibregl-ctrl-attrib"));
+  assert.equal(
+    await evaluate("getComputedStyle(document.querySelector('.intel-statusbar')).display"),
+    "none",
+    "The mobile map gives the workspace the footer's space",
+  );
+  const workspaceHeight = await evaluate("document.querySelector('.intel-workspace').getBoundingClientRect().height");
+  await click(".intel-search-toggle");
+  assert.ok(await evaluate(`(() => {
+    const search = document.querySelector('.intel-search');
+    const workspace = document.querySelector('.intel-workspace').getBoundingClientRect();
+    return getComputedStyle(search).display === 'flex' && workspace.height === ${workspaceHeight};
+  })()`), "Mobile search overlays the map without shrinking it");
+  await click(".intel-search-toggle");
+  await click(".event-feed__close");
+  await waitFor(() => visible(".map-activity-button"), "compact mobile activity button");
+  await sleep(250);
+  const screenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
+  await view(2);
+  await waitFor(() => visible(".event-row"), "archive");
   assert.ok(await evaluate(`(() => {
     const footer = document.querySelector('.intel-statusbar').getBoundingClientRect();
     const content = [
@@ -322,7 +343,7 @@ try {
     return content.every((rect) =>
       rect.left >= 0 && rect.right <= innerWidth && rect.top >= footer.top && rect.bottom <= footer.bottom
     );
-  })()`), "Legal notices and footer links remain visible on mobile");
+  })()`), "Legal notices and footer links remain visible in mobile content views");
   assert.equal(
     await evaluate("document.querySelector('.intel-statusbar__links a[href=\"https://t.me/missiondayatlas\"]').href"),
     "https://t.me/missiondayatlas",
@@ -345,10 +366,6 @@ try {
   assert.ok(await evaluate(
     "document.querySelector('.intel-statusbar__legal').textContent.includes('Data is sourced from Bannergress')",
   ));
-  const screenshot = await send("Page.captureScreenshot");
-  await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
-  await view(2);
-  await waitFor(() => visible(".event-row"), "archive");
   assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstEvent.city);
   await selectLanguage("ja");
   assert.equal(await evaluate("document.documentElement.lang"), "ja");
