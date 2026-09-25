@@ -323,10 +323,19 @@ try {
   await click(".intel-search-toggle");
   assert.ok(await evaluate(`(() => {
     const search = document.querySelector('.intel-search');
+    const close = document.querySelector('.intel-search__close');
+    const input = document.querySelector('#archive-search-input');
+    const box = search.getBoundingClientRect();
     const workspace = document.querySelector('.intel-workspace').getBoundingClientRect();
-    return getComputedStyle(search).display === 'flex' && workspace.height === ${workspaceHeight};
-  })()`), "Mobile search overlays the map without shrinking it");
-  await click(".intel-search-toggle");
+    return getComputedStyle(search).display === 'flex' && workspace.height === ${workspaceHeight} &&
+      box.width >= innerWidth - 24 && Math.abs((box.left + box.right) / 2 - innerWidth / 2) <= 1 &&
+      getComputedStyle(close).display === 'grid' && close.getBoundingClientRect().width >= 44 &&
+      input.getBoundingClientRect().width >= 200;
+  })()`), "Mobile search is a wide centered overlay with its own close button");
+  const mobileSearchScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "map-mobile-search.png"), Buffer.from(mobileSearchScreenshot.data, "base64"));
+  await click(".intel-search__close");
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.intel-search')).display"), "none");
   await click(".event-feed__close");
   await waitFor(() => visible(".map-activity-button"), "compact mobile activity button");
   await sleep(250);

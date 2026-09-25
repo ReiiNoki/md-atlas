@@ -38,7 +38,7 @@ export function TopBar({
   const searchToggleRef = useRef(null);
   const languagePickerRef = useRef(null);
   const languageButtonRef = useRef(null);
-  const searchVisible = searchExpanded || filters.query.length > 0;
+  const searchVisible = searchExpanded;
 
   useEffect(() => {
     if (searchExpanded) searchInputRef.current?.focus();
@@ -62,12 +62,14 @@ export function TopBar({
     };
   }, [languageMenuOpen]);
 
+  const closeSearch = () => {
+    setSearchExpanded(false);
+    searchToggleRef.current?.focus();
+  };
+
   const toggleSearch = () => {
-    if (filters.query) {
-      searchInputRef.current?.focus();
-    } else {
-      setSearchExpanded((expanded) => !expanded);
-    }
+    if (searchExpanded) searchInputRef.current?.focus();
+    else setSearchExpanded(true);
   };
 
   return (
@@ -110,13 +112,13 @@ export function TopBar({
         className="icon-button intel-search-toggle"
         type="button"
         aria-label={t(
-          filters.query ? "editSearch" : searchVisible ? "closeSearch" : "openSearch",
+          searchVisible || filters.query ? "editSearch" : "openSearch",
         )}
         aria-expanded={searchVisible}
         aria-controls="archive-search"
         onClick={toggleSearch}
       >
-        {searchVisible && !filters.query ? <X size={18} /> : <Search size={18} />}
+        <Search size={18} />
       </button>
 
       <div className="intel-search" id="archive-search" role="search">
@@ -129,14 +131,9 @@ export function TopBar({
           id="archive-search-input"
           value={filters.query}
           onKeyDown={(event) => {
-            if (
-              event.key === "Escape" &&
-              !filters.query &&
-              searchToggleRef.current?.getClientRects().length
-            ) {
+            if (event.key === "Escape" && searchToggleRef.current?.getClientRects().length) {
               event.stopPropagation();
-              setSearchExpanded(false);
-              searchToggleRef.current.focus();
+              closeSearch();
             }
           }}
           onChange={(event) => onFilterChange("query", event.target.value)}
@@ -144,6 +141,7 @@ export function TopBar({
         />
         {filters.query ? (
           <button
+            className="intel-search__clear"
             type="button"
             title={t("clearSearch")}
             aria-label={t("clearSearch")}
@@ -156,6 +154,15 @@ export function TopBar({
             <X size={15} />
           </button>
         ) : null}
+        <button
+          className="intel-search__close"
+          type="button"
+          title={t("closeSearch")}
+          aria-label={t("closeSearch")}
+          onClick={closeSearch}
+        >
+          <X size={17} />
+        </button>
       </div>
 
       <button

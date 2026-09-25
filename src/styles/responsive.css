@@ -20,10 +20,11 @@
     .intel-tabs { grid-column: 1 / -1; grid-row: 2; width: 100%; height: 44px; margin: 0; }
     .intel-tabs button { min-width: 0; flex: 1 1 0; padding: 0 8px; font-size: 14px; }
     .intel-search-toggle { display: grid; grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
-    .intel-search { position: absolute; top: calc(100% + 8px); right: 12px; left: 12px; z-index: 20; display: none; height: 44px; margin: 0; box-shadow: var(--shadow-panel); }
+    .intel-search { position: absolute; top: calc(100% + 8px); right: auto; left: 50%; z-index: 20; display: none; width: min(520px, calc(100vw - 24px)); height: 48px; grid-column: 1 / -1; margin: 0; padding: 0 0 0 14px; transform: translateX(-50%); box-shadow: var(--shadow-panel); }
     .intel-topbar.has-search .intel-search { display: flex; }
     .intel-search input { font-size: 16px; }
-    .intel-search button { width: 44px; height: 44px; flex: 0 0 44px; }
+    .intel-search .intel-search__clear { width: 38px; height: 46px; flex: 0 0 38px; }
+    .intel-search .intel-search__close { display: grid; width: 48px; height: 46px; flex: 0 0 48px; border-left: 1px solid var(--color-divider); }
     .intel-tool-button { grid-row: 1; align-self: center; width: 44px; height: 44px; }
     .intel-filter-button { grid-column: 3; }
     .intel-language-picker { grid-column: 4; grid-row: 1; align-self: center; width: 44px; height: 44px; }
@@ -49,7 +50,7 @@
   @media (max-width: 430px) {
     :root { --statusbar-height: 86px; }
     .intel-topbar { padding-right: max(10px, env(safe-area-inset-right)); padding-left: max(10px, env(safe-area-inset-left)); }
-    .intel-search { right: max(10px, env(safe-area-inset-right)); left: max(10px, env(safe-area-inset-left)); }
+    .intel-search { right: auto; left: 50%; width: calc(100vw - 20px); }
     .detail-panel__heading h2 { font-size: 22px; }
     .intel-statusbar { gap: 2px; padding: 4px 8px; font-size: 9px; }
     .intel-statusbar__legal p { line-height: 1.25; }
