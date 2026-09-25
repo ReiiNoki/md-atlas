@@ -72,4 +72,22 @@
     .maplibregl-ctrl-bottom-right { top: auto; right: 10px; bottom: 10px; }
     .map-control-dock { top: 112px; right: 16px; bottom: auto; }
   }
+
+  @media (max-width: 430px) {
+    .selection-strip { right: 64px; left: 10px; min-height: 40px; padding: 6px 10px; font-size: 12px; }
+    .selection-strip strong { max-width: 62%; }
+    .event-feed { right: 10px; bottom: 34px; left: 10px; max-height: 250px; grid-template-rows: 68px minmax(0, 1fr) 38px; border-radius: var(--radius-sm); }
+    .event-feed > header { height: 68px; grid-template-columns: minmax(0, 1fr) 36px; grid-template-rows: 32px 36px; }
+    .event-feed > header > span { grid-column: 1; grid-row: 1; padding: 0 10px; }
+    .event-feed nav { grid-column: 1 / -1; grid-row: 2; border-top: 1px solid var(--color-divider); }
+    .event-feed nav button { padding: 0 4px; border-left: 1px solid var(--color-divider); font-size: 10px; }
+    .event-feed nav button:first-child { border-left: 0; }
+    .event-feed__close { grid-column: 2; grid-row: 1; width: 36px; height: 32px; }
+    .event-feed__rows { overflow: hidden; }
+    .event-feed__rows > button { min-height: 46px; grid-template-columns: 8px 68px minmax(0, 1fr) 52px; gap: 5px; padding: 0 9px; font-size: 10px; }
+    .event-feed__rows > button:nth-child(n + 4) { display: none; }
+    .event-feed__archive { min-height: 38px; font-size: 12px; }
+    .map-activity-button { bottom: 10px; left: 10px; }
+    .maplibregl-ctrl-bottom-right { right: 6px; bottom: 6px; }
+  }
 }

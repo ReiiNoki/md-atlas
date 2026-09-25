@@ -45,7 +45,14 @@
     .filter-console { position: absolute; top: 8px; right: 16px; bottom: auto; left: 16px; width: auto; max-height: calc(100% - 16px); overflow-y: auto; z-index: 1300; }
   }
   @media (max-width: 430px) {
+    :root { --statusbar-height: 86px; }
+    .intel-topbar { padding-right: 10px; padding-left: 10px; }
     .detail-panel__heading h2 { font-size: 22px; }
+    .intel-statusbar { gap: 2px; padding: 4px 8px; font-size: 9px; }
+    .intel-statusbar__legal p { line-height: 1.25; }
+    .intel-statusbar__links { gap: 6px; }
+    .intel-statusbar__links a { width: 30px; height: 30px; }
+    .intel-statusbar__links img, .intel-statusbar__links svg { width: 21px; height: 21px; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

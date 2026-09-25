@@ -302,6 +302,16 @@ try {
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
   await sleep(300);
   assert.ok(await evaluate("document.querySelector('.mission-map canvas').getBoundingClientRect().width <= 390"));
+  assert.ok(await evaluate(`(() => {
+    const feed = document.querySelector('.event-feed').getBoundingClientRect();
+    const label = document.querySelector('.event-feed > header > span').getBoundingClientRect();
+    const nav = document.querySelector('.event-feed nav').getBoundingClientRect();
+    const selection = document.querySelector('.selection-strip').getBoundingClientRect();
+    const visibleRows = [...document.querySelectorAll('.event-feed__rows > button')]
+      .filter((row) => getComputedStyle(row).display !== 'none');
+    return feed.height <= 251 && nav.top >= label.bottom && visibleRows.length === 3 &&
+      feed.top - selection.bottom >= 100;
+  })()`), "Mobile event feed uses a compact two-row header and leaves the map visible");
   assert.ok(await visible(".maplibregl-ctrl-attrib"));
   assert.ok(await evaluate(`(() => {
     const footer = document.querySelector('.intel-statusbar').getBoundingClientRect();
