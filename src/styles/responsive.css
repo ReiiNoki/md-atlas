@@ -36,7 +36,7 @@
     .archive-screen { overflow: hidden; }
     .intel-surface-heading, .surface-heading { height: 66px; gap: 12px; }
     .intel-surface-heading h1, .surface-heading h1 { font-size: 24px; }
-    .calendar-heading { height: auto; min-height: 112px; align-items: stretch; flex-direction: column; }
+    .calendar-heading { height: auto; min-height: 172px; align-items: stretch; flex-direction: column; }
     .calendar-period-control { width: 100%; grid-template-columns: 40px minmax(70px, .8fr) minmax(110px, 1fr) 40px; }
     .archive-tools strong { display: none; }
     .archive-layout > .detail-panel, .intel-workspace--map > .detail-panel { position: absolute; inset: 0; z-index: 1200; width: auto; height: auto; max-height: none; padding: 0; border-radius: 0; transform: translateY(16px); }

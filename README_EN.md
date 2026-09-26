@@ -17,6 +17,7 @@ Whether you want to look back on an event you attended, explore missions from an
 - **Event history:** Event names, dates, host cities, and countries or territories.
 - **Mission archive:** Mission titles, publishers and factions, ratings, completion counts, route distances, and estimated durations.
 - **Event status:** Online, partially offline, offline, or scheduled status as recorded in the archive.
+- **XM Anomaly calendar:** Historical Anomalies organized by official series, date, host location, and site role.
 - **Source links:** Links from events and missions to their corresponding source pages when available.
 
 Some event or mission records remain incomplete. Missing information is shown as missing rather than being filled in through speculation.
@@ -25,14 +26,14 @@ Some event or mission records remain incomplete. Missing information is shown as
 
 - **Map:** Discover Mission Day events by geographic location.
 - **Archive:** Search cities, countries or territories, and mission titles; filter by year, region, country or territory, and status; and inspect event and mission details.
-- **Calendar:** Browse events by month and year to revisit the Mission Day timeline.
+- **Calendar:** Browse Mission Day and XM Anomaly events by month and year, together or as separate activity types.
 - **Data:** Explore distributions by year, geography, and publisher, along with completion rankings and the ten highest- and lowest-rated events and individual missions.
 
 The interface is available in Chinese, English, and Japanese and supports both desktop and mobile layouts.
 
 ## Data Sources and Notes
 
-Event and mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/).
+Mission Day and mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/). XM Anomaly schedules prioritize official Ingress materials and are cross-checked against historical results and event records.
 
 - **This is not a live database:** The site presents snapshots captured at particular times. Mission availability, ratings, and completion counts may have changed since collection.
 - **Historical coverage may be incomplete:** An event missing from the archive does not mean it never took place, and a missing mission field does not mean the mission itself does not exist.

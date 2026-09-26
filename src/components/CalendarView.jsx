@@ -3,9 +3,11 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Globe2,
   MapPin,
   Star,
   Users,
+  Zap,
 } from "lucide-react";
 import { EventDetail } from "./EventDetail";
 import { MissionImage } from "./MissionImage";
@@ -42,7 +44,33 @@ function formatAgendaDate(date, locale, t) {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-export function CalendarView({ events }) {
+function activityLocation(event, language, t) {
+  if (event.calendarType === "xm-anomaly" && event.siteRole === "global") {
+    return t("globalActivity");
+  }
+  return displayCityName(event.countryCode, event.city, language);
+}
+
+function activityCountry(event, language, t) {
+  if (event.calendarType === "xm-anomaly" && event.siteRole === "global") {
+    return t("globalActivityScope");
+  }
+  return displayCountryName(event.countryCode, event.country, language);
+}
+
+function roleLabel(role, t) {
+  const keys = {
+    primary: "xmaRolePrimary",
+    satellite: "xmaRoleSatellite",
+    site: "xmaRoleSite",
+    "shard-game": "xmaRoleShardGame",
+    "impact-zone": "xmaRoleImpactZone",
+    global: "xmaRoleGlobal",
+  };
+  return t(keys[role] ?? "xmaRoleSite");
+}
+
+export function CalendarView({ events, xmAnomalies = [] }) {
   const { locale, formatNumber, language, t } = useLanguage();
   const months = useMemo(
     () =>
@@ -62,9 +90,17 @@ export function CalendarView({ events }) {
       ),
     [locale],
   );
+  const [activityType, setActivityType] = useState("all");
+  const sourceActivities = useMemo(() => {
+    const missionDays = events.map((event) => ({ ...event, calendarType: "mission-day" }));
+    const anomalies = xmAnomalies.map((event) => ({ ...event, calendarType: "xm-anomaly" }));
+    if (activityType === "mission-day") return missionDays;
+    if (activityType === "xm-anomaly") return anomalies;
+    return [...missionDays, ...anomalies];
+  }, [activityType, events, xmAnomalies]);
   const datedEvents = useMemo(
-    () => events.filter((event) => event.date && Number.isFinite(event.year)),
-    [events],
+    () => sourceActivities.filter((event) => event.date && Number.isFinite(event.year)),
+    [sourceActivities],
   );
   const years = useMemo(
     () => [...new Set(datedEvents.map((event) => event.year))].sort((a, b) => b - a),
@@ -105,14 +141,23 @@ export function CalendarView({ events }) {
       group.push(event);
       groups.set(event.date, group);
     }
+    for (const group of groups.values()) {
+      group.sort(
+        (a, b) =>
+          (a.calendarType === b.calendarType ? 0 : a.calendarType === "xm-anomaly" ? -1 : 1) ||
+          activityLocation(a, language, t).localeCompare(activityLocation(b, language, t), locale),
+      );
+    }
     return groups;
-  }, [activeMonth, activeYear, datedEvents]);
+  }, [activeMonth, activeYear, datedEvents, language, locale, t]);
 
   const dates = [...eventsByDate.keys()].sort((a, b) => b.localeCompare(a));
   const activeDate = eventsByDate.has(requestedDate) ? requestedDate : (dates[0] ?? null);
   const agendaEvents = activeDate ? (eventsByDate.get(activeDate) ?? []) : [];
   const selectedActivity =
-    agendaEvents.find((event) => event.id === selectedActivityId) ?? null;
+    agendaEvents.find(
+      (event) => event.id === selectedActivityId && event.calendarType === "mission-day",
+    ) ?? null;
   const selectedActivityDetail = selectedActivity
     ? (activityDetails[selectedActivity.id] ?? selectedActivity)
     : null;
@@ -122,13 +167,18 @@ export function CalendarView({ events }) {
   const activeYearIndex = years.indexOf(activeYear);
   const canGoPrevious = activeMonth > 0 || activeYearIndex < years.length - 1;
   const canGoNext = activeMonth < 11 || activeYearIndex > 0;
-  const undatedCount = events.length - datedEvents.length;
+  const undatedCount = sourceActivities.length - datedEvents.length;
   const today = new Date().toISOString().slice(0, 10);
+  const monthEventCount = [...eventsByDate.values()].reduce(
+    (total, group) => total + group.length,
+    0,
+  );
 
   const changePeriod = (year, month) => {
     setRequestedYear(year);
     setRequestedMonth(month);
     setRequestedDate(null);
+    setSelectedActivityId(null);
   };
 
   const moveMonth = (direction) => {
@@ -149,6 +199,14 @@ export function CalendarView({ events }) {
       .filter((event) => event.year === year)
       .map((event) => Number(event.date.slice(5, 7)) - 1);
     changePeriod(year, Math.max(...monthsWithEvents));
+  };
+
+  const changeActivityType = (type) => {
+    setActivityType(type);
+    setRequestedYear(null);
+    setRequestedMonth(null);
+    setRequestedDate(null);
+    setSelectedActivityId(null);
   };
 
   const handleCalendarWheel = (event) => {
@@ -221,42 +279,61 @@ export function CalendarView({ events }) {
       <div className="surface-heading calendar-heading">
         <div>
           <span className="section-code">{t("archiveCalendar")}</span>
-          <h1>{t("missionDayCalendar")}</h1>
+          <h1>{t("activityCalendar")}</h1>
         </div>
-        <div className="calendar-period-control" aria-label={t("selectYearMonth")}>
-          <button
-            type="button"
-            aria-label={t("previousMonth")}
-            disabled={!canGoPrevious}
-            onClick={() => moveMonth(-1)}
-          >
-            <ChevronLeft size={17} />
-          </button>
-          <select value={activeYear} onChange={(event) => changeYear(Number(event.target.value))}>
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
+        <div className="calendar-heading__controls">
+          <div className="calendar-type-control" aria-label={t("calendarActivityTypes")}>
+            {[
+              ["all", "allActivities"],
+              ["mission-day", "missionDayActivities"],
+              ["xm-anomaly", "xmAnomalyActivities"],
+            ].map(([type, label]) => (
+              <button
+                type="button"
+                className={activityType === type ? "is-active" : ""}
+                aria-pressed={activityType === type}
+                key={type}
+                onClick={() => changeActivityType(type)}
+              >
+                {t(label)}
+              </button>
             ))}
-          </select>
-          <select
-            value={activeMonth}
-            onChange={(event) => changePeriod(activeYear, Number(event.target.value))}
-          >
-            {months.map((month, index) => (
-              <option key={month} value={index}>
-                {month}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            aria-label={t("nextMonth")}
-            disabled={!canGoNext}
-            onClick={() => moveMonth(1)}
-          >
-            <ChevronRight size={17} />
-          </button>
+          </div>
+          <div className="calendar-period-control" aria-label={t("selectYearMonth")}>
+            <button
+              type="button"
+              aria-label={t("previousMonth")}
+              disabled={!canGoPrevious}
+              onClick={() => moveMonth(-1)}
+            >
+              <ChevronLeft size={17} />
+            </button>
+            <select value={activeYear} onChange={(event) => changeYear(Number(event.target.value))}>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <select
+              value={activeMonth}
+              onChange={(event) => changePeriod(activeYear, Number(event.target.value))}
+            >
+              {months.map((month, index) => (
+                <option key={month} value={index}>
+                  {month}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              aria-label={t("nextMonth")}
+              disabled={!canGoNext}
+              onClick={() => moveMonth(1)}
+            >
+              <ChevronRight size={17} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -272,7 +349,7 @@ export function CalendarView({ events }) {
               <h2>{months[activeMonth]}</h2>
             </div>
             <span className="calendar-panel__meta">
-              <strong>{formatNumber([...eventsByDate.values()].flat().length)} {t("events")}</strong>
+              <strong>{formatNumber(monthEventCount)} {t("events")}</strong>
               <small>{t("scrollToChangeMonth")}</small>
             </span>
           </header>
@@ -295,10 +372,18 @@ export function CalendarView({ events }) {
                 );
               }
 
-              const locations = dayEvents.map((event) => displayCityName(event.countryCode, event.city, language)).join(", ");
+              const locations = dayEvents
+                .map((event) => activityLocation(event, language, t))
+                .join(", ");
+              const types = new Set(dayEvents.map((event) => event.calendarType));
+              const typeClass = types.size > 1
+                ? "has-mixed-activities"
+                : types.has("xm-anomaly")
+                  ? "has-xm-anomalies"
+                  : "has-mission-days";
               return (
                 <button
-                  className={`calendar-day has-events ${date === activeDate ? "is-selected" : ""} ${date === today ? "is-today" : ""}`}
+                  className={`calendar-day has-events ${typeClass} ${date === activeDate ? "is-selected" : ""} ${date === today ? "is-today" : ""}`}
                   type="button"
                   key={key}
                   title={t("calendarDayTitle", {
@@ -310,13 +395,23 @@ export function CalendarView({ events }) {
                     count: formatNumber(dayEvents.length),
                     locations,
                   })}
-                  onClick={() => setRequestedDate(date)}
+                  onClick={() => {
+                    setRequestedDate(date);
+                    setSelectedActivityId(null);
+                  }}
                 >
                   <span>{day}</span>
                   <span className="calendar-day__cities">
-                    {dayEvents.map((event) => (
-                      <span key={event.id} title={event.city}>{displayCityName(event.countryCode, event.city, language)}</span>
+                    {dayEvents.slice(0, 2).map((event) => (
+                      <span
+                        className={`is-${event.calendarType}`}
+                        key={event.id}
+                        title={event.city}
+                      >
+                        {activityLocation(event, language, t)}
+                      </span>
                     ))}
+                    {dayEvents.length > 2 ? <span>+{formatNumber(dayEvents.length - 2)}</span> : null}
                   </span>
                   <b>{formatNumber(dayEvents.length)}</b>
                 </button>
@@ -345,53 +440,74 @@ export function CalendarView({ events }) {
               <header>
                 <span>{t("activitySchedule")}</span>
                 <h2>{formatAgendaDate(activeDate, locale, t)}</h2>
-                <small>{formatNumber(agendaEvents.length)} {t("missionDayEvents")}</small>
+                <small>{formatNumber(agendaEvents.length)} {t("calendarEvents")}</small>
               </header>
 
               <div className="calendar-activity-list">
-            {!agendaEvents.length ? (
-              <div className="calendar-activity-empty">
-                <CalendarDays size={26} strokeWidth={1.2} />
-                <strong>{t("noActivity")}</strong>
-                <p>{t("selectHighlightedDate")}</p>
-              </div>
-            ) : null}
-            {agendaEvents.map((event, index) => (
-              <button
-                className="calendar-activity-card"
-                type="button"
-                key={event.id}
-                onClick={() => setSelectedActivityId(event.id)}
-              >
-                <MissionImage event={event} eager={index < 2} />
-                <span className="calendar-activity-card__main">
-                  <small>
-                    <MapPin size={11} /> {displayCountryName(event.countryCode, event.country, language)}
-                  </small>
-                  <strong title={event.city}>{displayCityName(event.countryCode, event.city, language)}</strong>
-                  <span>{event.title}</span>
-                </span>
-                <span className="calendar-activity-card__metrics">
-                  <b>
-                    {event.missionCount != null
-                      ? `${formatNumber(event.missionCount)} ${t("missions")}`
-                      : t("unknownMissionCount")}
-                  </b>
-                  <b>
-                    <Star size={11} fill="currentColor" />
-                    {typeof event.averageRating === "number"
-                      ? `${event.averageRating.toFixed(1)}%`
-                      : t("noRating")}
-                  </b>
-                  <b>
-                    <Users size={11} />
-                    {event.completions != null ? formatNumber(event.completions) : t("noRating")}
-                  </b>
-                </span>
-                <StatusBadge status={event.status} />
-                <ChevronRight className="calendar-activity-card__arrow" size={17} />
-              </button>
-            ))}
+                {!agendaEvents.length ? (
+                  <div className="calendar-activity-empty">
+                    <CalendarDays size={26} strokeWidth={1.2} />
+                    <strong>{t("noActivity")}</strong>
+                    <p>{t("selectHighlightedDate")}</p>
+                  </div>
+                ) : null}
+                {agendaEvents.map((event, index) =>
+                  event.calendarType === "xm-anomaly" ? (
+                    <article className="calendar-activity-card calendar-activity-card--xma" key={event.id}>
+                      <span className="calendar-xma-mark" aria-hidden="true">
+                        <Zap size={24} />
+                        <b>XMA</b>
+                      </span>
+                      <span className="calendar-activity-card__main">
+                        <small>
+                          {event.siteRole === "global" ? <Globe2 size={11} /> : <MapPin size={11} />}
+                          {activityCountry(event, language, t)}
+                        </small>
+                        <strong title={event.city}>{activityLocation(event, language, t)}</strong>
+                        <span title={event.title}>{event.title}</span>
+                      </span>
+                      <span className="calendar-xma-meta">
+                        <b>{roleLabel(event.siteRole, t)}</b>
+                        <small>{t(event.status)}</small>
+                      </span>
+                    </article>
+                  ) : (
+                    <button
+                      className="calendar-activity-card"
+                      type="button"
+                      key={event.id}
+                      onClick={() => setSelectedActivityId(event.id)}
+                    >
+                      <MissionImage event={event} eager={index < 2} />
+                      <span className="calendar-activity-card__main">
+                        <small>
+                          <MapPin size={11} /> {displayCountryName(event.countryCode, event.country, language)}
+                        </small>
+                        <strong title={event.city}>{displayCityName(event.countryCode, event.city, language)}</strong>
+                        <span>{event.title}</span>
+                      </span>
+                      <span className="calendar-activity-card__metrics">
+                        <b>
+                          {event.missionCount != null
+                            ? `${formatNumber(event.missionCount)} ${t("missions")}`
+                            : t("unknownMissionCount")}
+                        </b>
+                        <b>
+                          <Star size={11} fill="currentColor" />
+                          {typeof event.averageRating === "number"
+                            ? `${event.averageRating.toFixed(1)}%`
+                            : t("noRating")}
+                        </b>
+                        <b>
+                          <Users size={11} />
+                          {event.completions != null ? formatNumber(event.completions) : t("noRating")}
+                        </b>
+                      </span>
+                      <StatusBadge status={event.status} />
+                      <ChevronRight className="calendar-activity-card__arrow" size={17} />
+                    </button>
+                  ),
+                )}
               </div>
             </>
           )}

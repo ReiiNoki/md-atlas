@@ -32,7 +32,7 @@ test("footer legal notices and external icon links are complete", () => {
   );
   assert.equal(
     translate("zh", "dataSourceNotice"),
-    "数据来源于 Bannergress 和 Ingress Intel Map。",
+    "Mission Day 数据来源于 Bannergress 和 Ingress Intel Map；XM Anomaly 日程根据 Ingress 官方资料整理。",
   );
   assert.equal(
     translate("zh", "ingressTrademarkNotice"),

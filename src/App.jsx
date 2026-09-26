@@ -25,6 +25,7 @@ import {
   INITIAL_FILTERS,
 } from "./utils/archive";
 import { parseUrlState, serializeUrlState } from "./utils/urlState";
+import { filterXmAnomalies, normalizeXmAnomalies } from "./utils/calendarActivities";
 
 // Chunk loaders stay resolvable outside render so a failed fetch can be
 // retried with a fresh import() call.
@@ -60,6 +61,9 @@ export default function App() {
   const [analyticsState, setAnalyticsState] = useState("idle");
   const [analyticsError, setAnalyticsError] = useState("");
   const [analyticsAttempt, setAnalyticsAttempt] = useState(0);
+  const [xmAnomalies, setXmAnomalies] = useState(null);
+  const [xmAnomalyState, setXmAnomalyState] = useState("idle");
+  const [xmAnomalyAttempt, setXmAnomalyAttempt] = useState(0);
   const [eventDetails, setEventDetails] = useState({});
   const [detailLoadState, setDetailLoadState] = useState("idle");
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -210,6 +214,25 @@ export default function App() {
   }, [activeView, detailAttempt, detailOpen, eventDetails, selectedEvent]);
 
   useEffect(() => {
+    if (activeView !== "calendar" || xmAnomalies) return undefined;
+    const controller = new AbortController();
+    setXmAnomalyState("loading");
+    fetch(assetUrl("data/xm-anomalies.json"), { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        setXmAnomalies(normalizeXmAnomalies(data));
+        setXmAnomalyState("ready");
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setXmAnomalyState("error");
+      });
+    return () => controller.abort();
+  }, [activeView, xmAnomalies, xmAnomalyAttempt]);
+
+  useEffect(() => {
     if (activeView !== "data" || analytics) return;
     const controller = new AbortController();
     setAnalyticsState("loading");
@@ -324,6 +347,11 @@ export default function App() {
     setDetailOpen(true);
   };
 
+  const filteredXmAnomalies = useMemo(
+    () => filterXmAnomalies(xmAnomalies ?? [], filters, deferredQuery),
+    [deferredQuery, filters, xmAnomalies],
+  );
+
   const filteredAnalyticsEvents = useMemo(() => {
     if (!analytics?.events) return [];
     const visibleEvents = new Map(filteredEvents.map((event) => [event.id, event]));
@@ -369,7 +397,9 @@ export default function App() {
       />
       <ActiveFilters
         filters={filters}
-        resultCount={filteredEvents.length}
+        resultCount={
+          filteredEvents.length + (activeView === "calendar" ? filteredXmAnomalies.length : 0)
+        }
         searchState={searchBlocked ? (searchIndexState === "error" ? "error" : "loading") : "ready"}
         pending={isPending || deferredQuery !== filters.query}
         onClear={clearFilter}
@@ -425,12 +455,32 @@ export default function App() {
         ) : null}
 
         {!searchBlocked && activeView === "calendar" ? (
-          <RetryableLazyView
-            load={loadCalendarView}
-            epoch={viewEpochs.calendar}
-            onRetry={() => retryView("calendar")}
-            render={(CalendarView) => <CalendarView events={filteredEvents} />}
-          />
+          xmAnomalyState === "ready" ? (
+            <RetryableLazyView
+              load={loadCalendarView}
+              epoch={viewEpochs.calendar}
+              onRetry={() => retryView("calendar")}
+              render={(CalendarView) => (
+                <CalendarView events={filteredEvents} xmAnomalies={filteredXmAnomalies} />
+              )}
+            />
+          ) : (
+            <ViewLoading
+              label={t(
+                xmAnomalyState === "error"
+                  ? "xmAnomalyCalendarLoadFailed"
+                  : "loadingXmAnomalyCalendar",
+              )}
+              onRetry={
+                xmAnomalyState === "error"
+                  ? () => {
+                      setXmAnomalyState("loading");
+                      setXmAnomalyAttempt((attempt) => attempt + 1);
+                    }
+                  : undefined
+              }
+            />
+          )
         ) : null}
 
         {!searchBlocked && activeView === "data" ? (

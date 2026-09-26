@@ -85,7 +85,7 @@ const pending = new Map();
 const errors = [];
 const consoleMessages = [];
 let cancelledInterceptions = 0;
-const failNext = { searchIndex: 0, eventDetail: 0 };
+const failNext = { searchIndex: 0, eventDetail: 0, xmAnomalies: 0 };
 function send(method, params = {}) {
   const id = ++nextId;
   return new Promise((resolve, reject) => {
@@ -110,6 +110,11 @@ async function intercept({ requestId, request }) {
   }
   if (request.url.includes("/data/events/") && failNext.eventDetail > 0) {
     failNext.eventDetail -= 1;
+    await send("Fetch.failRequest", { requestId, errorReason: "Failed" });
+    return;
+  }
+  if (request.url.endsWith("/data/xm-anomalies.json") && failNext.xmAnomalies > 0) {
+    failNext.xmAnomalies -= 1;
     await send("Fetch.failRequest", { requestId, errorReason: "Failed" });
     return;
   }
@@ -178,7 +183,7 @@ try {
   });
   await send("Page.enable");
   await send("Runtime.enable");
-  await send("Fetch.enable", { patterns: [{ urlPattern: "*tiles.openfreemap.org/*" }, { urlPattern: "*api.bannergress.com/*" }, { urlPattern: "*/data/search-index.json" }, { urlPattern: "*/data/events/*" }] });
+  await send("Fetch.enable", { patterns: [{ urlPattern: "*tiles.openfreemap.org/*" }, { urlPattern: "*api.bannergress.com/*" }, { urlPattern: "*/data/search-index.json" }, { urlPattern: "*/data/events/*" }, { urlPattern: "*/data/xm-anomalies.json" }] });
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `
     // MapLibre 6 Worker protocol, observed only in this isolated test browser.
@@ -373,7 +378,7 @@ try {
     "document.querySelector('.intel-statusbar__legal').textContent.includes('not officially affiliated')",
   ));
   assert.ok(await evaluate(
-    "document.querySelector('.intel-statusbar__legal').textContent.includes('Data is sourced from Bannergress')",
+    "document.querySelector('.intel-statusbar__legal').textContent.includes('Mission Day data is sourced from Bannergress') && document.querySelector('.intel-statusbar__legal').textContent.includes('XM Anomaly schedules')",
   ));
   assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstEvent.city);
   await selectLanguage("ja");
@@ -388,7 +393,7 @@ try {
     "document.querySelector('.intel-statusbar__legal').textContent.includes('无官方关联')",
   ));
   assert.ok(await evaluate(
-    "document.querySelector('.intel-statusbar__legal').textContent.includes('数据来源于 Bannergress')",
+    "document.querySelector('.intel-statusbar__legal').textContent.includes('数据来源于 Bannergress') && document.querySelector('.intel-statusbar__legal').textContent.includes('XM Anomaly 日程')",
   ));
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
@@ -474,9 +479,32 @@ try {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '');
     input.dispatchEvent(new Event('input', { bubbles: true }));
   })()`);
+  failNext.xmAnomalies = 1;
   await view(3);
-  await waitFor(() => visible(".calendar-days"), "calendar");
+  await waitFor(() => visible('.view-loading[role="alert"]'), "XM Anomaly calendar error");
+  assert.equal(await visible(".calendar-days"), false, "Incomplete calendar data must stay hidden");
+  await click('.view-loading button');
+  await waitFor(() => visible(".calendar-days"), "calendar data retry");
   assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`));
+  assert.equal(await evaluate("document.querySelectorAll('.calendar-type-control button').length"), 3);
+  await click(".calendar-type-control button:nth-child(3)");
+  await waitFor(() => visible(".calendar-activity-card--xma"), "XM Anomaly calendar cards");
+  assert.ok(await evaluate("document.querySelector('.calendar-activity-list').textContent.includes('XM Anomaly: Apollo')"));
+  assert.ok(await evaluate(`(() => {
+    const heading = document.querySelector('.calendar-heading').getBoundingClientRect();
+    const controls = document.querySelector('.calendar-heading__controls').getBoundingClientRect();
+    const typeButtons = [...document.querySelectorAll('.calendar-type-control button')];
+    return controls.left >= 0 && controls.right <= innerWidth && controls.bottom <= heading.bottom &&
+      typeButtons.every((button) => button.getBoundingClientRect().width >= 80) &&
+      document.querySelectorAll('.calendar-activity-card--xma').length === 2 &&
+      !document.querySelector('.calendar-activity-card--xma .mission-image');
+  })()`), "Mobile calendar separates XMA data with usable type controls and dedicated cards");
+  const calendarControlsScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-xma-controls-mobile.png"), Buffer.from(calendarControlsScreenshot.data, "base64"));
+  await evaluate("document.querySelector('.calendar-activity-panel').scrollIntoView({ block: 'start' })");
+  await sleep(250);
+  const calendarScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-xma-mobile.png"), Buffer.from(calendarScreenshot.data, "base64"));
   await view(4);
   await waitFor(() => visible(".data-dashboard"), "analytics");
   assert.equal(await visible(".data-quality"), false, "Data quality diagnostics are not shown in the dashboard");
