@@ -33,7 +33,7 @@ MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期�
 
 ## 数据来源与说明
 
-Mission Day 与任务数据主要来自 [Bannergress](https://bannergress.com/) 和 [Ingress Intel Map](https://intel.ingress.com/)；XM Anomaly 日程优先根据 Ingress 官方资料整理，并以历史成绩和活动资料交叉核对。
+Mission Day 与任务数据主要来自 [Bannergress](https://bannergress.com/) 和 [Ingress Intel Map](https://intel.ingress.com/)；XM Anomaly 日程优先根据 Ingress 官方资料整理，并以历史成绩和活动资料交叉核对。日历中的 Anomaly 标志为 [Ingress Plus](https://ingress.plus/badges) 收录的历史徽章或赛季图稿之本地优化版本。
 
 - **档案不是实时数据**：页面展示采集时的数据快照，任务状态、评分与完成次数可能已经发生变化。
 - **历史记录可能存在缺失**：未收录的活动不代表未曾举办，缺少某项任务数据也不代表该任务不存在。

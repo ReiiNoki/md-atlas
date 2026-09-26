@@ -33,7 +33,7 @@ MD Atlas は、世界各地で開催された Ingress Mission Day を記録す�
 
 ## データの出典と注意事項
 
-Mission Day とミッションのデータは、主に [Bannergress](https://bannergress.com/) と [Ingress Intel Map](https://intel.ingress.com/) から取得しています。XM Anomaly 日程は Ingress 公式資料を優先し、過去の結果やイベント記録と照合して整理しています。
+Mission Day とミッションのデータは、主に [Bannergress](https://bannergress.com/) と [Ingress Intel Map](https://intel.ingress.com/) から取得しています。XM Anomaly 日程は Ingress 公式資料を優先し、過去の結果やイベント記録と照合して整理しています。カレンダーの Anomaly マークには、[Ingress Plus](https://ingress.plus/badges) が収録する歴代バッジまたはシーズン画像をローカル向けに最適化して使用しています。
 
 - **リアルタイムデータではありません：** サイトには特定の時点で取得したスナップショットを掲載しています。ミッションの公開状態、評価、完了回数は取得後に変化している可能性があります。
 - **過去の記録は完全ではない場合があります：** アーカイブにないイベントが開催されていなかったとは限りません。また、項目が欠けていても、そのミッション自体が存在しないとは限りません。

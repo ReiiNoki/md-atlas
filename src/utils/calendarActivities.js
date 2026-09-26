@@ -60,3 +60,7 @@ export function filterXmAnomalies(records, filters, query = filters.query) {
 export function calendarActivityType(event) {
   return event.type === "xm-anomaly" ? "xm-anomaly" : "mission-day";
 }
+
+export function calendarActivityMarker(event, locationLabel) {
+  return calendarActivityType(event) === "xm-anomaly" ? event.series : locationLabel;
+}

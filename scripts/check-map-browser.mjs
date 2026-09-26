@@ -489,6 +489,10 @@ try {
   assert.equal(await evaluate("document.querySelectorAll('.calendar-type-control button').length"), 3);
   await click(".calendar-type-control button:nth-child(3)");
   await waitFor(() => visible(".calendar-activity-card--xma"), "XM Anomaly calendar cards");
+  await waitFor(
+    () => evaluate("[...document.querySelectorAll('.calendar-activity-card--xma .calendar-xma-mark img')].every((image) => image.complete && image.naturalWidth > 0)"),
+    "XM Anomaly calendar logos",
+  );
   assert.ok(await evaluate("document.querySelector('.calendar-activity-list').textContent.includes('XM Anomaly: Apollo')"));
   assert.ok(await evaluate(`(() => {
     const heading = document.querySelector('.calendar-heading').getBoundingClientRect();
@@ -497,8 +501,21 @@ try {
     return controls.left >= 0 && controls.right <= innerWidth && controls.bottom <= heading.bottom &&
       typeButtons.every((button) => button.getBoundingClientRect().width >= 80) &&
       document.querySelectorAll('.calendar-activity-card--xma').length === 2 &&
+      document.querySelector('.calendar-day__markers .is-xm-anomaly')?.textContent.trim() === 'Apollo' &&
+      [...document.querySelectorAll('.calendar-activity-card--xma .calendar-xma-mark img')]
+        .every((image) => image.complete && image.naturalWidth > 0) &&
       !document.querySelector('.calendar-activity-card--xma .mission-image');
   })()`), "Mobile calendar separates XMA data with usable type controls and dedicated cards");
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await sleep(250);
+  assert.ok(await evaluate(`(() => {
+    const marker = document.querySelector('.calendar-day__markers .is-xm-anomaly');
+    return marker?.textContent.trim() === 'Apollo' && getComputedStyle(marker.parentElement).display !== 'none';
+  })()`), "Desktop calendar labels XM Anomaly dates by series");
+  const calendarDesktopScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-xma-desktop.png"), Buffer.from(calendarDesktopScreenshot.data, "base64"));
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
+  await sleep(250);
   const calendarControlsScreenshot = await send("Page.captureScreenshot");
   await writeFile(join(artifacts, "calendar-xma-controls-mobile.png"), Buffer.from(calendarControlsScreenshot.data, "base64"));
   await evaluate("document.querySelector('.calendar-activity-panel').scrollIntoView({ block: 'start' })");

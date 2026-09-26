@@ -7,13 +7,14 @@ import {
   MapPin,
   Star,
   Users,
-  Zap,
 } from "lucide-react";
 import { EventDetail } from "./EventDetail";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
+import { calendarActivityMarker } from "../utils/calendarActivities";
 import { displayCityName, displayCountryName } from "../utils/locations";
+import { xmAnomalyLogoPath } from "../utils/xmAnomalyLogos";
 
 function isoDate(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -68,6 +69,28 @@ function roleLabel(role, t) {
     global: "xmaRoleGlobal",
   };
   return t(keys[role] ?? "xmaRoleSite");
+}
+
+function XmAnomalyLogo({ series, eager = false }) {
+  const { t } = useLanguage();
+  const preferredPath = xmAnomalyLogoPath(series);
+  const [failedPath, setFailedPath] = useState(null);
+  const imagePath = failedPath === preferredPath ? "ingress-logo.svg" : preferredPath;
+
+  return (
+    <span className="calendar-xma-mark">
+      <img
+        src={`${import.meta.env.BASE_URL}${imagePath}`}
+        alt={t("xmAnomalyLogoAlt", { series })}
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : "auto"}
+        width="256"
+        height="256"
+        decoding="async"
+        onError={() => setFailedPath(preferredPath)}
+      />
+    </span>
+  );
 }
 
 export function CalendarView({ events, xmAnomalies = [] }) {
@@ -372,9 +395,16 @@ export function CalendarView({ events, xmAnomalies = [] }) {
                 );
               }
 
-              const locations = dayEvents
-                .map((event) => activityLocation(event, language, t))
-                .join(", ");
+              const markers = [...new Map(
+                dayEvents.map((event) => {
+                  const label = calendarActivityMarker(
+                    event,
+                    activityLocation(event, language, t),
+                  );
+                  return [`${event.calendarType}:${label}`, { event, label }];
+                }),
+              ).values()];
+              const labels = markers.map(({ label }) => label).join(", ");
               const types = new Set(dayEvents.map((event) => event.calendarType));
               const typeClass = types.size > 1
                 ? "has-mixed-activities"
@@ -388,12 +418,12 @@ export function CalendarView({ events, xmAnomalies = [] }) {
                   key={key}
                   title={t("calendarDayTitle", {
                     count: formatNumber(dayEvents.length),
-                    locations,
+                    locations: labels,
                   })}
                   aria-label={t("calendarDayEvents", {
                     date,
                     count: formatNumber(dayEvents.length),
-                    locations,
+                    locations: labels,
                   })}
                   onClick={() => {
                     setRequestedDate(date);
@@ -401,17 +431,17 @@ export function CalendarView({ events, xmAnomalies = [] }) {
                   }}
                 >
                   <span>{day}</span>
-                  <span className="calendar-day__cities">
-                    {dayEvents.slice(0, 2).map((event) => (
+                  <span className="calendar-day__markers">
+                    {markers.slice(0, 2).map(({ event, label }) => (
                       <span
                         className={`is-${event.calendarType}`}
-                        key={event.id}
-                        title={event.city}
+                        key={`${event.calendarType}:${label}`}
+                        title={label}
                       >
-                        {activityLocation(event, language, t)}
+                        {label}
                       </span>
                     ))}
-                    {dayEvents.length > 2 ? <span>+{formatNumber(dayEvents.length - 2)}</span> : null}
+                    {markers.length > 2 ? <span>+{formatNumber(markers.length - 2)}</span> : null}
                   </span>
                   <b>{formatNumber(dayEvents.length)}</b>
                 </button>
@@ -454,10 +484,7 @@ export function CalendarView({ events, xmAnomalies = [] }) {
                 {agendaEvents.map((event, index) =>
                   event.calendarType === "xm-anomaly" ? (
                     <article className="calendar-activity-card calendar-activity-card--xma" key={event.id}>
-                      <span className="calendar-xma-mark" aria-hidden="true">
-                        <Zap size={24} />
-                        <b>XMA</b>
-                      </span>
+                      <XmAnomalyLogo series={event.series} eager={index < 2} />
                       <span className="calendar-activity-card__main">
                         <small>
                           {event.siteRole === "global" ? <Globe2 size={11} /> : <MapPin size={11} />}

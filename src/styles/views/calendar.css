@@ -126,9 +126,9 @@
   .calendar-day.has-events.has-xm-anomalies.is-selected { box-shadow: inset 0 0 0 2px var(--color-amber); }
   .calendar-day.has-events.has-mixed-activities.is-selected { box-shadow: inset 0 0 0 1px var(--color-cyan), inset 0 0 0 3px var(--color-amber); }
   .calendar-day b { color: inherit; font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
-  .calendar-day__cities { display: flex; max-width: 100%; min-width: 0; align-self: center; flex-direction: column; align-items: center; gap: 1px; overflow: hidden; color: var(--color-cyan-soft); font-size: 12px; text-align: center; }
-  .calendar-day__cities span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .calendar-day__cities .is-xm-anomaly { color: var(--color-amber); }
+  .calendar-day__markers { display: flex; max-width: 100%; min-width: 0; align-self: center; flex-direction: column; align-items: center; gap: 1px; overflow: hidden; color: var(--color-cyan-soft); font-size: 12px; text-align: center; }
+  .calendar-day__markers span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .calendar-day__markers .is-xm-anomaly { color: var(--color-amber); }
   .calendar-undated { margin: 0; padding: 10px 14px; border-top: 1px solid var(--color-divider); color: var(--color-text-muted); font-size: 12px; }
 
   .calendar-activity-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); }
@@ -167,21 +167,19 @@
   .calendar-activity-card--xma { grid-template-columns: 104px minmax(0, 1fr) auto; border-left: 2px solid var(--color-amber); cursor: default; }
   .calendar-activity-card--xma:hover { background: transparent; }
   .calendar-xma-mark {
-    display: flex;
+    display: grid;
     width: 104px;
     height: 82px;
     grid-column: 1;
     grid-row: 1 / 3;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 3px;
+    place-items: center;
+    overflow: hidden;
+    padding: 5px;
     border: 1px solid rgb(242 193 78 / 35%);
     border-radius: 4px;
-    color: var(--color-amber);
     background: radial-gradient(circle, rgb(242 193 78 / 16%), rgb(242 193 78 / 4%) 65%, transparent 66%);
   }
-  .calendar-xma-mark b { font-family: var(--font-heading); font-size: 14px; letter-spacing: .1em; }
+  .calendar-xma-mark img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgb(0 0 0 / 45%)); }
   .calendar-xma-meta { display: flex; grid-column: 3; grid-row: 1 / 3; align-items: flex-end; justify-content: center; flex-direction: column; gap: 7px; }
   .calendar-xma-meta b { padding: 4px 7px; border: 1px solid rgb(242 193 78 / 38%); border-radius: 999px; color: var(--color-amber); font-family: var(--font-mono); font-size: 10px; font-weight: 500; white-space: nowrap; }
   .calendar-xma-meta small { color: var(--color-green); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
@@ -193,7 +191,7 @@
     .calendar-type-control { grid-template-columns: repeat(3, minmax(64px, 1fr)); }
     .calendar-type-control button { padding: 0 6px; }
     .calendar-split { grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); }
-    .calendar-day__cities { display: none; }
+    .calendar-day__markers { display: none; }
     .calendar-activity-card { grid-template-columns: 72px minmax(0, 1fr) 20px; }
     .calendar-activity-card > .mission-image { width: 72px; height: 62px; }
     .calendar-activity-card__metrics { display: none; }

@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { INITIAL_FILTERS } from "../src/utils/archive.js";
 import {
+  calendarActivityMarker,
   calendarActivityType,
   filterXmAnomalies,
   normalizeXmAnomalies,
 } from "../src/utils/calendarActivities.js";
+import {
+  hasSeriesSpecificXmAnomalyLogo,
+  xmAnomalyLogoPath,
+} from "../src/utils/xmAnomalyLogos.js";
 
 const payload = JSON.parse(
   await readFile(new URL("../public/data/xm-anomalies.json", import.meta.url), "utf8"),
@@ -21,6 +26,23 @@ test("published XM Anomalies remain independent calendar activities", () => {
   assert.ok(anomalies.every((event) => event.year === Number(event.date.slice(0, 4))));
   assert.ok(anomalies.every((event) => calendarActivityType(event) === "xm-anomaly"));
   assert.equal(calendarActivityType({ missionDayType: "md-xma" }), "mission-day");
+});
+
+test("calendar markers name the Anomaly series instead of repeating its sites", () => {
+  assert.equal(calendarActivityMarker(anomalies.find((event) => event.series === "Apollo"), "Helsinki"), "Apollo");
+  assert.equal(calendarActivityMarker({ title: "Mission Day" }, "Helsinki"), "Helsinki");
+});
+
+test("every reviewed series has a local period-appropriate visual", async () => {
+  const series = [...new Set(anomalies.map((event) => event.series))];
+  assert.deepEqual(
+    series.filter((name) => !hasSeriesSpecificXmAnomalyLogo(name)),
+    ["Cassandra", "13MAGNUS"],
+  );
+  for (const name of series) {
+    const path = xmAnomalyLogoPath(name);
+    await access(new URL(`../public/${path}`, import.meta.url));
+  }
 });
 
 test("cancelled sites stay absent and global phases stay compact", () => {

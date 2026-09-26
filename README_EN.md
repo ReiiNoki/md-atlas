@@ -33,7 +33,7 @@ The interface is available in Chinese, English, and Japanese and supports both d
 
 ## Data Sources and Notes
 
-Mission Day and mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/). XM Anomaly schedules prioritize official Ingress materials and are cross-checked against historical results and event records.
+Mission Day and mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/). XM Anomaly schedules prioritize official Ingress materials and are cross-checked against historical results and event records. Anomaly marks in the calendar are locally optimized copies of historical badge or season artwork catalogued by [Ingress Plus](https://ingress.plus/badges).
 
 - **This is not a live database:** The site presents snapshots captured at particular times. Mission availability, ratings, and completion counts may have changed since collection.
 - **Historical coverage may be incomplete:** An event missing from the archive does not mean it never took place, and a missing mission field does not mean the mission itself does not exist.
