@@ -136,7 +136,7 @@
   .calendar-activity-panel > header { min-height: 110px; padding: 20px; border-bottom: 1px solid var(--color-divider); background: var(--color-surface-raised); }
   .calendar-activity-panel > header span, .calendar-activity-panel > header small { color: var(--color-text-muted); font-size: 12px; }
   .calendar-activity-panel > header h2 { margin: 5px 0; color: var(--color-text); font-size: 20px; line-height: 1.15; }
-  .calendar-activity-list { min-height: 0; padding: 8px; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--color-divider) transparent; }
+  .calendar-activity-list { display: flex; min-height: 0; padding: 8px; overflow: hidden auto; flex-direction: column; scrollbar-width: thin; scrollbar-color: var(--color-divider) transparent; }
   .calendar-activity-card {
     position: relative;
     display: grid;
@@ -164,25 +164,43 @@
   .calendar-activity-card__metrics b { display: flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 400; white-space: nowrap; }
   .calendar-activity-card > .status { grid-column: 2; grid-row: 2; align-self: end; }
   .calendar-activity-card__arrow { grid-column: 4; grid-row: 1 / 3; align-self: center; color: var(--color-cyan); }
-  .calendar-activity-card--xma { grid-template-columns: 104px minmax(0, 1fr) auto; border-left: 2px solid var(--color-amber); cursor: default; }
-  .calendar-activity-card--xma:hover { background: transparent; }
-  .calendar-xma-mark {
-    display: grid;
-    width: 104px;
-    height: 82px;
-    grid-column: 1;
-    grid-row: 1 / 3;
-    place-items: center;
+  .calendar-xma-series {
+    position: relative;
     overflow: hidden;
-    padding: 5px;
-    border: 1px solid rgb(242 193 78 / 35%);
-    border-radius: 4px;
-    background: radial-gradient(circle, rgb(242 193 78 / 16%), rgb(242 193 78 / 4%) 65%, transparent 66%);
+    flex: 0 0 auto;
+    border: 1px solid rgb(242 193 78 / 30%);
+    border-radius: var(--radius-sm);
+    background: linear-gradient(150deg, rgb(242 193 78 / 9%), transparent 42%);
   }
-  .calendar-xma-mark img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 5px rgb(0 0 0 / 45%)); }
-  .calendar-xma-meta { display: flex; grid-column: 3; grid-row: 1 / 3; align-items: flex-end; justify-content: center; flex-direction: column; gap: 7px; }
-  .calendar-xma-meta b { padding: 4px 7px; border: 1px solid rgb(242 193 78 / 38%); border-radius: 999px; color: var(--color-amber); font-family: var(--font-mono); font-size: 10px; font-weight: 500; white-space: nowrap; }
-  .calendar-xma-meta small { color: var(--color-green); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
+  .calendar-xma-series::before { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; content: ""; background: var(--color-amber); }
+  .calendar-xma-series__hero {
+    display: grid;
+    min-height: 136px;
+    grid-template-columns: 108px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 15px;
+    padding: 14px 16px 14px 18px;
+    border-bottom: 1px solid rgb(242 193 78 / 18%);
+    background: radial-gradient(circle at 62px 50%, rgb(242 193 78 / 14%), transparent 105px);
+  }
+  .calendar-xma-logo { display: grid; width: 108px; height: 108px; place-items: center; }
+  .calendar-xma-logo img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 9px rgb(0 0 0 / 50%)); }
+  .calendar-xma-series__identity { min-width: 0; }
+  .calendar-xma-series__identity > span { color: var(--color-amber); font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .calendar-xma-series__identity h3 { margin: 4px 0 2px; overflow: hidden; color: var(--color-text); font-family: var(--font-heading); font-size: 25px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+  .calendar-xma-series__identity p { margin: 0; color: var(--color-text-muted); font-family: var(--font-mono); font-size: 11px; }
+  .calendar-xma-series__statuses { display: flex; align-self: start; flex-direction: column; gap: 5px; }
+  .calendar-xma-series__statuses small { padding: 3px 6px; border: 1px solid currentColor; border-radius: 999px; color: var(--color-green); font-family: var(--font-mono); font-size: 9px; white-space: nowrap; }
+  .calendar-xma-series__statuses small.is-scheduled { color: var(--color-amber); }
+  .calendar-xma-sites { margin: 0; padding: 0; list-style: none; }
+  .calendar-xma-sites li { display: grid; min-height: 68px; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 14px 10px 18px; border-bottom: 1px solid var(--color-divider); }
+  .calendar-xma-sites li:last-child { border-bottom: 0; }
+  .calendar-xma-sites li:hover { background: rgb(242 193 78 / 4%); }
+  .calendar-xma-site__index { color: rgb(242 193 78 / 55%); font-family: var(--font-mono); font-size: 10px; }
+  .calendar-xma-site__place { display: flex; min-width: 0; flex-direction: column; }
+  .calendar-xma-site__place small { display: flex; align-items: center; gap: 4px; color: var(--color-text-muted); font-size: var(--text-meta); }
+  .calendar-xma-site__place strong { overflow: hidden; color: var(--color-text); font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .calendar-xma-site__role { padding: 4px 7px; border: 1px solid rgb(242 193 78 / 38%); border-radius: 999px; color: var(--color-amber); font-family: var(--font-mono); font-size: 10px; white-space: nowrap; }
   .calendar-activity-empty { display: flex; min-height: 240px; align-items: center; justify-content: center; flex-direction: column; color: var(--color-text-muted); text-align: center; }
   .calendar-activity-empty strong { margin-top: 8px; color: var(--color-text-secondary); font-size: 16px; }
   .calendar-activity-empty p { margin: 4px 0; font-size: 14px; }
@@ -196,8 +214,9 @@
     .calendar-activity-card > .mission-image { width: 72px; height: 62px; }
     .calendar-activity-card__metrics { display: none; }
     .calendar-activity-card__arrow { grid-column: 3; }
-    .calendar-activity-card--xma { grid-template-columns: 72px minmax(0, 1fr) auto; }
-    .calendar-xma-mark { width: 72px; height: 62px; }
+    .calendar-xma-series__hero { min-height: 118px; grid-template-columns: 88px minmax(0, 1fr); }
+    .calendar-xma-logo { width: 88px; height: 88px; }
+    .calendar-xma-series__statuses { position: absolute; top: 10px; right: 10px; }
   }
   @media (max-width: 760px) {
     .calendar-view { overflow: hidden auto; }

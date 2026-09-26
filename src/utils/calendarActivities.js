@@ -64,3 +64,20 @@ export function calendarActivityType(event) {
 export function calendarActivityMarker(event, locationLabel) {
   return calendarActivityType(event) === "xm-anomaly" ? event.series : locationLabel;
 }
+
+export function groupXmAnomaliesBySeries(events) {
+  const groups = new Map();
+  for (const event of events) {
+    if (calendarActivityType(event) !== "xm-anomaly") continue;
+    const key = `${event.date}:${event.series}`;
+    const group = groups.get(key) ?? {
+      key,
+      date: event.date,
+      series: event.series,
+      sites: [],
+    };
+    group.sites.push(event);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}

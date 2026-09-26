@@ -12,7 +12,10 @@ import { EventDetail } from "./EventDetail";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
-import { calendarActivityMarker } from "../utils/calendarActivities";
+import {
+  calendarActivityMarker,
+  groupXmAnomaliesBySeries,
+} from "../utils/calendarActivities";
 import { displayCityName, displayCountryName } from "../utils/locations";
 import { xmAnomalyLogoPath } from "../utils/xmAnomalyLogos";
 
@@ -78,7 +81,7 @@ function XmAnomalyLogo({ series, eager = false }) {
   const imagePath = failedPath === preferredPath ? "ingress-logo.svg" : preferredPath;
 
   return (
-    <span className="calendar-xma-mark">
+    <span className="calendar-xma-logo">
       <img
         src={`${import.meta.env.BASE_URL}${imagePath}`}
         alt={t("xmAnomalyLogoAlt", { series })}
@@ -90,6 +93,50 @@ function XmAnomalyLogo({ series, eager = false }) {
         onError={() => setFailedPath(preferredPath)}
       />
     </span>
+  );
+}
+
+function XmAnomalySeries({ group, eager, formatNumber, language, t }) {
+  const statuses = [...new Set(group.sites.map((site) => site.status))];
+  const scopes = [...new Set(group.sites.map((site) => (
+    site.region === "GLOBAL" ? t("globalActivityScope") : site.region
+  )))];
+
+  return (
+    <article className="calendar-xma-series">
+      <header className="calendar-xma-series__hero">
+        <XmAnomalyLogo series={group.series} eager={eager} />
+        <div className="calendar-xma-series__identity">
+          <span>{t("xmAnomalySeries")}</span>
+          <h3>{group.series}</h3>
+          <p>
+            {formatNumber(group.sites.length)} {t("xmaSites")} · {scopes.join(" / ")}
+          </p>
+        </div>
+        <div className="calendar-xma-series__statuses">
+          {statuses.map((status) => (
+            <small className={`is-${status}`} key={status}>{t(status)}</small>
+          ))}
+        </div>
+      </header>
+      <ol className="calendar-xma-sites">
+        {group.sites.map((site, index) => (
+          <li key={site.id}>
+            <span className="calendar-xma-site__index" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="calendar-xma-site__place">
+              <small>
+                {site.siteRole === "global" ? <Globe2 size={11} /> : <MapPin size={11} />}
+                {activityCountry(site, language, t)}
+              </small>
+              <strong>{activityLocation(site, language, t)}</strong>
+            </span>
+            <span className="calendar-xma-site__role">{roleLabel(site.siteRole, t)}</span>
+          </li>
+        ))}
+      </ol>
+    </article>
   );
 }
 
@@ -177,6 +224,9 @@ export function CalendarView({ events, xmAnomalies = [] }) {
   const dates = [...eventsByDate.keys()].sort((a, b) => b.localeCompare(a));
   const activeDate = eventsByDate.has(requestedDate) ? requestedDate : (dates[0] ?? null);
   const agendaEvents = activeDate ? (eventsByDate.get(activeDate) ?? []) : [];
+  const agendaAnomalyGroups = groupXmAnomaliesBySeries(agendaEvents);
+  const agendaMissionDays = agendaEvents.filter((event) => event.calendarType === "mission-day");
+  const anomalyOnlyAgenda = agendaAnomalyGroups.length > 0 && agendaMissionDays.length === 0;
   const selectedActivity =
     agendaEvents.find(
       (event) => event.id === selectedActivityId && event.calendarType === "mission-day",
@@ -470,7 +520,9 @@ export function CalendarView({ events, xmAnomalies = [] }) {
               <header>
                 <span>{t("activitySchedule")}</span>
                 <h2>{formatAgendaDate(activeDate, locale, t)}</h2>
-                <small>{formatNumber(agendaEvents.length)} {t("calendarEvents")}</small>
+                <small>
+                  {formatNumber(agendaEvents.length)} {t(anomalyOnlyAgenda ? "xmaSites" : "calendarEvents")}
+                </small>
               </header>
 
               <div className="calendar-activity-list">
@@ -481,60 +533,52 @@ export function CalendarView({ events, xmAnomalies = [] }) {
                     <p>{t("selectHighlightedDate")}</p>
                   </div>
                 ) : null}
-                {agendaEvents.map((event, index) =>
-                  event.calendarType === "xm-anomaly" ? (
-                    <article className="calendar-activity-card calendar-activity-card--xma" key={event.id}>
-                      <XmAnomalyLogo series={event.series} eager={index < 2} />
-                      <span className="calendar-activity-card__main">
-                        <small>
-                          {event.siteRole === "global" ? <Globe2 size={11} /> : <MapPin size={11} />}
-                          {activityCountry(event, language, t)}
-                        </small>
-                        <strong title={event.city}>{activityLocation(event, language, t)}</strong>
-                        <span title={event.title}>{event.title}</span>
-                      </span>
-                      <span className="calendar-xma-meta">
-                        <b>{roleLabel(event.siteRole, t)}</b>
-                        <small>{t(event.status)}</small>
-                      </span>
-                    </article>
-                  ) : (
-                    <button
-                      className="calendar-activity-card"
-                      type="button"
-                      key={event.id}
-                      onClick={() => setSelectedActivityId(event.id)}
-                    >
-                      <MissionImage event={event} eager={index < 2} />
-                      <span className="calendar-activity-card__main">
-                        <small>
-                          <MapPin size={11} /> {displayCountryName(event.countryCode, event.country, language)}
-                        </small>
-                        <strong title={event.city}>{displayCityName(event.countryCode, event.city, language)}</strong>
-                        <span>{event.title}</span>
-                      </span>
-                      <span className="calendar-activity-card__metrics">
-                        <b>
-                          {event.missionCount != null
-                            ? `${formatNumber(event.missionCount)} ${t("missions")}`
-                            : t("unknownMissionCount")}
-                        </b>
-                        <b>
-                          <Star size={11} fill="currentColor" />
-                          {typeof event.averageRating === "number"
-                            ? `${event.averageRating.toFixed(1)}%`
-                            : t("noRating")}
-                        </b>
-                        <b>
-                          <Users size={11} />
-                          {event.completions != null ? formatNumber(event.completions) : t("noRating")}
-                        </b>
-                      </span>
-                      <StatusBadge status={event.status} />
-                      <ChevronRight className="calendar-activity-card__arrow" size={17} />
-                    </button>
-                  ),
-                )}
+                {agendaAnomalyGroups.map((group, index) => (
+                  <XmAnomalySeries
+                    key={group.key}
+                    group={group}
+                    eager={index === 0}
+                    formatNumber={formatNumber}
+                    language={language}
+                    t={t}
+                  />
+                ))}
+                {agendaMissionDays.map((event, index) => (
+                  <button
+                    className="calendar-activity-card"
+                    type="button"
+                    key={event.id}
+                    onClick={() => setSelectedActivityId(event.id)}
+                  >
+                    <MissionImage event={event} eager={index < 2} />
+                    <span className="calendar-activity-card__main">
+                      <small>
+                        <MapPin size={11} /> {displayCountryName(event.countryCode, event.country, language)}
+                      </small>
+                      <strong title={event.city}>{displayCityName(event.countryCode, event.city, language)}</strong>
+                      <span>{event.title}</span>
+                    </span>
+                    <span className="calendar-activity-card__metrics">
+                      <b>
+                        {event.missionCount != null
+                          ? `${formatNumber(event.missionCount)} ${t("missions")}`
+                          : t("unknownMissionCount")}
+                      </b>
+                      <b>
+                        <Star size={11} fill="currentColor" />
+                        {typeof event.averageRating === "number"
+                          ? `${event.averageRating.toFixed(1)}%`
+                          : t("noRating")}
+                      </b>
+                      <b>
+                        <Users size={11} />
+                        {event.completions != null ? formatNumber(event.completions) : t("noRating")}
+                      </b>
+                    </span>
+                    <StatusBadge status={event.status} />
+                    <ChevronRight className="calendar-activity-card__arrow" size={17} />
+                  </button>
+                ))}
               </div>
             </>
           )}

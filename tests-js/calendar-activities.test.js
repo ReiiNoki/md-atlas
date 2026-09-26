@@ -6,6 +6,7 @@ import {
   calendarActivityMarker,
   calendarActivityType,
   filterXmAnomalies,
+  groupXmAnomaliesBySeries,
   normalizeXmAnomalies,
 } from "../src/utils/calendarActivities.js";
 import {
@@ -31,6 +32,17 @@ test("published XM Anomalies remain independent calendar activities", () => {
 test("calendar markers name the Anomaly series instead of repeating its sites", () => {
   assert.equal(calendarActivityMarker(anomalies.find((event) => event.series === "Apollo"), "Helsinki"), "Apollo");
   assert.equal(calendarActivityMarker({ title: "Mission Day" }, "Helsinki"), "Helsinki");
+});
+
+test("Anomaly agendas group host sites under one series presentation", () => {
+  const sites = anomalies.filter((event) => event.series === "Erased Memories" && event.date === "2024-12-14");
+  const groups = groupXmAnomaliesBySeries([
+    ...sites,
+    { id: "mission-day", date: "2024-12-14", title: "Mission Day" },
+  ]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].series, "Erased Memories");
+  assert.deepEqual(groups[0].sites, sites);
 });
 
 test("every reviewed series has a local period-appropriate visual", async () => {

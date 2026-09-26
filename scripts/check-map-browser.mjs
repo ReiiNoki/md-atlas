@@ -488,24 +488,26 @@ try {
   assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`));
   assert.equal(await evaluate("document.querySelectorAll('.calendar-type-control button').length"), 3);
   await click(".calendar-type-control button:nth-child(3)");
-  await waitFor(() => visible(".calendar-activity-card--xma"), "XM Anomaly calendar cards");
+  await waitFor(() => visible(".calendar-xma-series"), "XM Anomaly series agenda");
   await waitFor(
-    () => evaluate("[...document.querySelectorAll('.calendar-activity-card--xma .calendar-xma-mark img')].every((image) => image.complete && image.naturalWidth > 0)"),
+    () => evaluate("[...document.querySelectorAll('.calendar-xma-series .calendar-xma-logo img')].every((image) => image.complete && image.naturalWidth > 0)"),
     "XM Anomaly calendar logos",
   );
-  assert.ok(await evaluate("document.querySelector('.calendar-activity-list').textContent.includes('XM Anomaly: Apollo')"));
+  assert.equal(await evaluate("document.querySelector('.calendar-xma-series__identity h3').textContent"), "Apollo");
   assert.ok(await evaluate(`(() => {
     const heading = document.querySelector('.calendar-heading').getBoundingClientRect();
     const controls = document.querySelector('.calendar-heading__controls').getBoundingClientRect();
     const typeButtons = [...document.querySelectorAll('.calendar-type-control button')];
     return controls.left >= 0 && controls.right <= innerWidth && controls.bottom <= heading.bottom &&
       typeButtons.every((button) => button.getBoundingClientRect().width >= 80) &&
-      document.querySelectorAll('.calendar-activity-card--xma').length === 2 &&
+      document.querySelectorAll('.calendar-xma-series').length === 1 &&
+      document.querySelectorAll('.calendar-xma-sites li').length === 2 &&
+      document.querySelectorAll('.calendar-xma-logo img').length === 1 &&
       document.querySelector('.calendar-day__markers .is-xm-anomaly')?.textContent.trim() === 'Apollo' &&
-      [...document.querySelectorAll('.calendar-activity-card--xma .calendar-xma-mark img')]
+      [...document.querySelectorAll('.calendar-xma-logo img')]
         .every((image) => image.complete && image.naturalWidth > 0) &&
-      !document.querySelector('.calendar-activity-card--xma .mission-image');
-  })()`), "Mobile calendar separates XMA data with usable type controls and dedicated cards");
+      !document.querySelector('.calendar-activity-card--xma');
+  })()`), "Mobile calendar groups XMA sites under a dedicated series presentation");
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
   assert.ok(await evaluate(`(() => {
