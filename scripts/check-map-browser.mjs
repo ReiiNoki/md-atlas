@@ -50,6 +50,9 @@ const firstMissionRow = events.findIndex(e => e.missionCount > 0);
 const firstMissionEvent = events[firstMissionRow];
 const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
+const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
+assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
+const longCjkMarkerZh = displayCityName(longCjkMarkerEvent.countryCode, longCjkMarkerEvent.city, "zh");
 const firstLocationZh = eventMapLocation(firstEvent, "zh");
 const missionLocationZh = eventMapLocation(firstMissionEvent, "zh");
 const workerPreview = workers ? await startWorkersPreview(artifacts) : null;
@@ -516,6 +519,94 @@ try {
   })()`), "Desktop calendar labels XM Anomaly dates by series");
   const calendarDesktopScreenshot = await send("Page.captureScreenshot");
   await writeFile(join(artifacts, "calendar-xma-desktop.png"), Buffer.from(calendarDesktopScreenshot.data, "base64"));
+  await evaluate(`(() => {
+    const year = document.querySelector('.calendar-period-control select');
+    year.value = '2024';
+    year.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelector('.calendar-day__markers .is-xm-anomaly')?.textContent.trim() === 'Erased Memories'"),
+    "long XM Anomaly series marker",
+  );
+  assert.ok(await evaluate(`(() => {
+    const marker = document.querySelector('.calendar-day__markers .is-xm-anomaly');
+    const style = getComputedStyle(marker);
+    return style.whiteSpace === 'nowrap' && style.overflowX === 'hidden' &&
+      style.textOverflow === 'ellipsis' && marker.getBoundingClientRect().height < 20;
+  })()`), "Series markers stay on one line and use ellipsis when needed");
+  const calendarLongSeriesScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-xma-single-line-desktop.png"), Buffer.from(calendarLongSeriesScreenshot.data, "base64"));
+  await click(".calendar-type-control button:nth-child(1)");
+  await evaluate(`(() => {
+    const year = document.querySelector('.calendar-period-control select');
+    year.value = '2019';
+    year.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelector('.calendar-panel__heading > div > span')?.textContent.trim() === '2019'"),
+    "six-week calendar year",
+  );
+  await evaluate(`(() => {
+    const month = document.querySelectorAll('.calendar-period-control select')[1];
+    month.value = '8';
+    month.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelectorAll('.calendar-period-control select')[1]?.value === '8'"),
+    "six-week calendar month",
+  );
+  assert.ok(await evaluate(`(() => {
+    const panel = document.querySelector('.calendar-panel');
+    const days = document.querySelector('.calendar-days').getBoundingClientRect();
+    const cells = [...document.querySelectorAll('.calendar-day')];
+    return getComputedStyle(panel).overflowY === 'hidden' && panel.scrollHeight <= panel.clientHeight + 1 &&
+      cells.every((cell) => {
+        const rect = cell.getBoundingClientRect();
+        return rect.top >= days.top - 1 && rect.bottom <= days.bottom + 1;
+      });
+  })()`), "Six-week months fit without an internal calendar scrollbar");
+  const calendarSixWeekScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-six-week-month-desktop.png"), Buffer.from(calendarSixWeekScreenshot.data, "base64"));
+  await evaluate(`(() => {
+    const year = document.querySelector('.calendar-period-control select');
+    year.value = '2024';
+    year.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelector('.calendar-panel__heading > div > span')?.textContent.trim() === '2024'"),
+    "CJK marker calendar year",
+  );
+  await evaluate(`(() => {
+    const month = document.querySelectorAll('.calendar-period-control select')[1];
+    month.value = '7';
+    month.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate(`[...document.querySelectorAll('.calendar-day__markers span')].some((marker) => marker.textContent.trim() === ${JSON.stringify(longCjkMarkerZh)})`),
+    "long CJK calendar marker",
+  );
+  assert.ok(await evaluate(`(() => {
+    const marker = [...document.querySelectorAll('.calendar-day__markers span')]
+      .find((element) => element.textContent.trim() === ${JSON.stringify(longCjkMarkerZh)});
+    const cell = marker.closest('.calendar-day').getBoundingClientRect();
+    const rect = marker.getBoundingClientRect();
+    const style = getComputedStyle(marker);
+    return style.whiteSpace === 'nowrap' && style.overflowX === 'hidden' &&
+      style.textOverflow === 'ellipsis' && marker.scrollWidth > marker.clientWidth &&
+      rect.left >= cell.left && rect.right <= cell.right;
+  })()`), "Long CJK marker labels stay inside their date cell with ellipsis");
+  const calendarCjkMarkerScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "calendar-ellipsis-marker-desktop.png"), Buffer.from(calendarCjkMarkerScreenshot.data, "base64"));
+  await click(".calendar-type-control button:nth-child(3)");
+  await evaluate(`(() => {
+    const year = document.querySelector('.calendar-period-control select');
+    year.value = '2024';
+    year.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelector('.calendar-panel__heading > div > span')?.textContent.trim() === '2024'"),
+    "restore long-series calendar year",
+  );
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
   const calendarControlsScreenshot = await send("Page.captureScreenshot");
