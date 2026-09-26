@@ -591,8 +591,11 @@ try {
     const cell = marker.closest('.calendar-day').getBoundingClientRect();
     const rect = marker.getBoundingClientRect();
     const style = getComputedStyle(marker);
+    marker.style.width = '24px';
+    const ellipsisCanActivate = marker.scrollWidth > marker.clientWidth;
+    marker.style.removeProperty('width');
     return style.whiteSpace === 'nowrap' && style.overflowX === 'hidden' &&
-      style.textOverflow === 'ellipsis' && marker.scrollWidth > marker.clientWidth &&
+      style.textOverflow === 'ellipsis' && ellipsisCanActivate &&
       rect.left >= cell.left && rect.right <= cell.right;
   })()`), "Long CJK marker labels stay inside their date cell with ellipsis");
   const calendarCjkMarkerScreenshot = await send("Page.captureScreenshot");
