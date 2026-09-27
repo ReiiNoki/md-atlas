@@ -50,6 +50,7 @@ const firstMissionRow = events.findIndex(e => e.missionCount > 0);
 const firstMissionEvent = events[firstMissionRow];
 const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
+const firstEventCompletions = new Intl.NumberFormat("en-US").format(firstEvent.completions);
 const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
 assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
 const longCjkMarkerZh = displayCityName(longCjkMarkerEvent.countryCode, longCjkMarkerEvent.city, "zh");
@@ -351,6 +352,34 @@ try {
   await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
   await view(2);
   await waitFor(() => visible(".event-row"), "archive");
+  assert.ok(await evaluate(`document.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)})`));
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await sleep(250);
+  assert.ok(await evaluate(`(() => {
+    const headers = [...document.querySelectorAll('.event-table__header > span')];
+    const row = document.querySelector('.event-row');
+    const date = headers[2].getBoundingClientRect();
+    const completions = headers[3].getBoundingClientRect();
+    const missions = headers[4].getBoundingClientRect();
+    return headers.length === 7 && date.right <= completions.left && completions.right <= missions.left &&
+      row.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)}) &&
+      document.querySelector('.event-table__body').scrollWidth <= document.querySelector('.event-table__body').clientWidth;
+  })()`), "Desktop archive places completion totals between date and mission count");
+  const archiveCompletionsScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-completions-desktop.png"), Buffer.from(archiveCompletionsScreenshot.data, "base64"));
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
+  await sleep(250);
+  assert.ok(await evaluate(`(() => {
+    const row = document.querySelector('.event-row');
+    const completions = row.querySelector('.event-row__completions');
+    const missions = row.querySelector('.event-row__count');
+    const c = completions.getBoundingClientRect();
+    const m = missions.getBoundingClientRect();
+    return getComputedStyle(completions.querySelector('small')).display !== 'none' &&
+      getComputedStyle(missions.querySelector('small')).display !== 'none' && c.bottom <= m.top;
+  })()`), "Mobile archive stacks completion and mission totals without overlap");
+  const archiveCompletionsMobileScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-completions-mobile.png"), Buffer.from(archiveCompletionsMobileScreenshot.data, "base64"));
   assert.ok(await evaluate(`(() => {
     const footer = document.querySelector('.intel-statusbar').getBoundingClientRect();
     const content = [

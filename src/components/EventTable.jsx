@@ -39,6 +39,7 @@ export function EventTable({
         <span>
           {t("date")} <ChevronDown size={12} />
         </span>
+        <span>{t("completionCount")}</span>
         <span>{t("missionCount")}</span>
         <span>{t("averageRating")}</span>
         <span>{t("status")}</span>
@@ -63,8 +64,13 @@ export function EventTable({
               </small>
             </span>
             <time dateTime={event.date ?? undefined}>{event.date ?? t("dateUnknown")}</time>
+            <span className="event-row__completions">
+              {event.completions != null ? formatNumber(event.completions) : "—"}
+              <small>{t("completionCount")}</small>
+            </span>
             <span className="event-row__count">
               {event.missionCount != null ? formatNumber(event.missionCount) : "—"}
+              <small>{t("missions")}</small>
             </span>
             <span className="event-row__rating">
               <Star size={13} fill="currentColor" />

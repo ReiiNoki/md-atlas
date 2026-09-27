@@ -51,6 +51,15 @@ test("footer legal notices and external icon links are complete", () => {
   assert.doesNotMatch(footer, /city-name-credits\.html/);
 });
 
+test("archive table places recorded completions after the event date", () => {
+  const table = readFileSync(new URL("../src/components/EventTable.jsx", import.meta.url), "utf8");
+  const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
+  assert.match(table, /t\("date"\)[\s\S]*t\("completionCount"\)[\s\S]*t\("missionCount"\)/);
+  assert.match(table, /event-row__completions[\s\S]*event\.completions/);
+  assert.match(archiveStyles, /\.event-row__completions, \.event-row__count/);
+  assert.doesNotMatch(archiveStyles, /event-row__count::after/);
+});
+
 test("mobile map starts unobstructed and keeps compact overlays available", () => {
   const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   const responsive = readFileSync(new URL("../src/styles/responsive.css", import.meta.url), "utf8");
