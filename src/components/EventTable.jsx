@@ -1,9 +1,11 @@
-import { ChevronDown, MapPin, Star } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, MapPin, Star } from "lucide-react";
 import { MissionDayTypeBadge } from "./MissionDayTypeBadge";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
 import { displayCityName, displayCountryName } from "../utils/locations";
+import { sortEventsByDate } from "../utils/archive";
 
 export function EventTable({
   events,
@@ -14,7 +16,15 @@ export function EventTable({
   onResetFilters,
 }) {
   const { formatNumber, language, t } = useLanguage();
-  const visibleEvents = events.slice(0, visibleCount);
+  const [dateSortDirection, setDateSortDirection] = useState("desc");
+  const sortedEvents = useMemo(
+    () => sortEventsByDate(events, dateSortDirection),
+    [events, dateSortDirection],
+  );
+  const visibleEvents = sortedEvents.slice(0, visibleCount);
+  const nextDateSortLabel = dateSortDirection === "desc"
+    ? t("sortDateAscending")
+    : t("sortDateDescending");
 
   if (!events.length) {
     return (
@@ -33,11 +43,24 @@ export function EventTable({
 
   return (
     <div className="event-table">
-      <div className="event-table__header" aria-hidden="true">
+      <div className="event-table__header">
         <span>{t("image")}</span>
         <span>{t("cityCountry")}</span>
-        <span>
-          {t("date")} <ChevronDown size={12} />
+        <span
+          className="event-table__date-heading"
+          role="columnheader"
+          aria-sort={dateSortDirection === "desc" ? "descending" : "ascending"}
+        >
+          <button
+            className="event-table__date-sort"
+            type="button"
+            aria-label={nextDateSortLabel}
+            title={nextDateSortLabel}
+            onClick={() => setDateSortDirection((current) => current === "desc" ? "asc" : "desc")}
+          >
+            {t("date")}
+            {dateSortDirection === "desc" ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+          </button>
         </span>
         <span>{t("completionCount")}</span>
         <span>{t("missionCount")}</span>

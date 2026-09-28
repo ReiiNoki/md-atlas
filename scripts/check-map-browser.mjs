@@ -51,6 +51,7 @@ const firstMissionEvent = events[firstMissionRow];
 const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
 const firstEventCompletions = new Intl.NumberFormat("en-US").format(firstEvent.completions);
+const oldestEvent = events.filter((event) => event.date).sort((a, b) => a.date.localeCompare(b.date))[0];
 const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
 assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
 const longCjkMarkerZh = displayCityName(longCjkMarkerEvent.countryCode, longCjkMarkerEvent.city, "zh");
@@ -365,6 +366,20 @@ try {
       row.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)}) &&
       document.querySelector('.event-table__body').scrollWidth <= document.querySelector('.event-table__body').clientWidth;
   })()`), "Desktop archive places completion totals between date and mission count");
+  await click(".event-table__date-sort");
+  await waitFor(
+    () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(oldestEvent.city)}`),
+    "ascending archive dates",
+  );
+  assert.equal(await evaluate("document.querySelector('.event-table__date-heading').getAttribute('aria-sort')"), "ascending");
+  const archiveAscendingScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-date-ascending-desktop.png"), Buffer.from(archiveAscendingScreenshot.data, "base64"));
+  await click(".event-table__date-sort");
+  await waitFor(
+    () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(firstEvent.city)}`),
+    "descending archive dates",
+  );
+  assert.equal(await evaluate("document.querySelector('.event-table__date-heading').getAttribute('aria-sort')"), "descending");
   const archiveCompletionsScreenshot = await send("Page.captureScreenshot");
   await writeFile(join(artifacts, "archive-completions-desktop.png"), Buffer.from(archiveCompletionsScreenshot.data, "base64"));
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
@@ -378,6 +393,17 @@ try {
     return getComputedStyle(completions.querySelector('small')).display !== 'none' &&
       getComputedStyle(missions.querySelector('small')).display !== 'none' && c.bottom <= m.top;
   })()`), "Mobile archive stacks completion and mission totals without overlap");
+  assert.equal(await visible(".event-table__date-sort"), true, "Mobile archive exposes the date sort control");
+  await click(".event-table__date-sort");
+  await waitFor(
+    () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(oldestEvent.city)}`),
+    "mobile ascending archive dates",
+  );
+  await click(".event-table__date-sort");
+  await waitFor(
+    () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(firstEvent.city)}`),
+    "mobile descending archive dates",
+  );
   const archiveCompletionsMobileScreenshot = await send("Page.captureScreenshot");
   await writeFile(join(artifacts, "archive-completions-mobile.png"), Buffer.from(archiveCompletionsMobileScreenshot.data, "base64"));
   assert.ok(await evaluate(`(() => {

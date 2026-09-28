@@ -55,6 +55,8 @@ test("archive table places recorded completions after the event date", () => {
   const table = readFileSync(new URL("../src/components/EventTable.jsx", import.meta.url), "utf8");
   const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
   assert.match(table, /t\("date"\)[\s\S]*t\("completionCount"\)[\s\S]*t\("missionCount"\)/);
+  assert.match(table, /sortDateAscending[\s\S]*sortDateDescending/);
+  assert.match(table, /event-table__date-sort/);
   assert.match(table, /event-row__completions[\s\S]*event\.completions/);
   assert.match(archiveStyles, /\.event-row__completions, \.event-row__count/);
   assert.doesNotMatch(archiveStyles, /event-row__count::after/);

@@ -11,6 +11,9 @@
   .event-table__header, .event-row { display: grid; grid-template-columns: 72px minmax(220px, 1.4fr) 122px 104px 82px 96px 104px; align-items: center; column-gap: 8px; }
   .event-table__header { color: var(--color-text-muted); background: var(--color-surface-raised); font-size: 12px; font-weight: 500; }
   .event-table__header span { display: flex; align-items: center; gap: 4px; padding: 0 12px; }
+  .event-table__date-sort { display: inline-flex; align-items: center; gap: 4px; padding: 8px 0; border: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+  .event-table__date-sort:hover { color: var(--color-cyan); }
+  .event-table__date-sort:focus-visible { border-radius: var(--radius-sm); outline: 2px solid var(--color-cyan); outline-offset: 2px; }
   .event-table__body { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--color-divider) transparent; }
 
   .event-row { position: relative; width: 100%; min-height: 64px; padding: 0; border: 0; border-bottom: 1px solid var(--color-divider); color: var(--color-text-secondary); background: transparent; cursor: pointer; text-align: left; content-visibility: auto; contain-intrinsic-size: 100% 64px; }
@@ -45,7 +48,10 @@
     .archive-layout { display: block; padding-top: 12px; }
     .archive-layout > .primary-surface { height: 100%; overflow: auto; scrollbar-width: thin; }
     .event-table { display: block; height: auto; overflow: visible; border-radius: var(--radius-md); }
-    .event-table__header { display: none; }
+    .event-table__header { display: flex; min-height: 44px; justify-content: flex-end; border-bottom: 1px solid var(--color-divider); }
+    .event-table__header > span { display: none; }
+    .event-table__header > .event-table__date-heading { display: flex; padding: 0 8px; }
+    .event-table__date-sort { padding: 7px 10px; border: 1px solid var(--color-divider); border-radius: var(--radius-sm); background: var(--color-surface); }
     .event-table__body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px; overflow: visible; }
     .event-row { display: grid; box-sizing: border-box; width: auto; max-width: 100%; min-width: 0; min-height: 110px; grid-template-columns: 72px minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto; gap: 3px 12px; padding: 12px; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-sm); background: rgb(22 33 39 / 65%); content-visibility: visible; contain-intrinsic-size: auto; }
     .event-row::before { width: 0; }

@@ -60,6 +60,21 @@ export function getYearRange(events) {
   return { min: Math.min(...years), max: Math.max(...years) };
 }
 
+export function sortEventsByDate(events, direction = "desc") {
+  const multiplier = direction === "asc" ? 1 : -1;
+  return events
+    .map((event, index) => ({ event, index }))
+    .sort((a, b) => {
+      const aDate = typeof a.event.date === "string" ? a.event.date : "";
+      const bDate = typeof b.event.date === "string" ? b.event.date : "";
+      if (!aDate && !bDate) return a.index - b.index;
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      return multiplier * aDate.localeCompare(bDate) || a.index - b.index;
+    })
+    .map(({ event }) => event);
+}
+
 /** Unique country filter options with event counts, most active first. */
 export function countEventsByCountry(events) {
   const counts = new Map();

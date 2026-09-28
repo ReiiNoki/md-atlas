@@ -6,6 +6,7 @@ import {
   getYearRange,
   INITIAL_FILTERS,
   matchesQuery,
+  sortEventsByDate,
 } from "../src/utils/archive.js";
 
 const events = [
@@ -113,4 +114,30 @@ test("filtered calendar counts are derived from visible events", () => {
 test("year range ignores undated events", () => {
   assert.deepEqual(getYearRange(events), { min: 2023, max: 2024 });
   assert.equal(getYearRange([events[2]]), null);
+});
+
+test("date sorting toggles direction without moving unknown dates ahead", () => {
+  const datedEvents = [
+    { id: "middle-a", date: "2024-05-10" },
+    { id: "newest", date: "2025-01-01" },
+    { id: "unknown", date: null },
+    { id: "oldest", date: "2023-12-31" },
+    { id: "middle-b", date: "2024-05-10" },
+  ];
+
+  assert.deepEqual(
+    sortEventsByDate(datedEvents, "desc").map((event) => event.id),
+    ["newest", "middle-a", "middle-b", "oldest", "unknown"],
+  );
+  assert.deepEqual(
+    sortEventsByDate(datedEvents, "asc").map((event) => event.id),
+    ["oldest", "middle-a", "middle-b", "newest", "unknown"],
+  );
+  assert.deepEqual(datedEvents.map((event) => event.id), [
+    "middle-a",
+    "newest",
+    "unknown",
+    "oldest",
+    "middle-b",
+  ]);
 });
