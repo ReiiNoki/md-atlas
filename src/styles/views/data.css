@@ -186,8 +186,7 @@
     .data-stat strong { font-size: 24px; }
     .data-panel > header { padding: 12px 16px; }
     .data-year-chart, .data-country-list, .data-set-list, .data-region-table { padding-right: 16px; padding-left: 16px; }
-    .data-year-row { grid-template-columns: 44px minmax(60px, 1fr) 50px; gap: 8px; }
-    .data-year-row span { display: none; }
+    .data-year-row { grid-template-columns: 44px minmax(60px, 1fr) 50px 58px; gap: 8px; }
     .data-country-row { grid-template-columns: 22px minmax(100px, .8fr) minmax(55px, 1fr) 42px; gap: 8px; }
     .data-publisher-head, .data-publisher-row { grid-template-columns: 34px minmax(120px, 1fr) 105px 58px; padding-right: 16px; padding-left: 16px; }
     .data-publisher-head span:last-child, .data-publisher-row > em:last-child { display: none; }

@@ -676,6 +676,19 @@ try {
   await view(4);
   await waitFor(() => visible(".data-dashboard"), "analytics");
   assert.equal(await visible(".data-quality"), false, "Data quality diagnostics are not shown in the dashboard");
+  assert.ok(await evaluate(`(() => {
+    const row = document.querySelector('.data-year-row');
+    const track = row.querySelector('.data-track').getBoundingClientRect();
+    const missions = row.querySelector('strong').getBoundingClientRect();
+    const events = row.querySelector('span').getBoundingClientRect();
+    const bounds = row.getBoundingClientRect();
+    return getComputedStyle(row.querySelector('span')).display !== 'none' &&
+      track.right <= missions.left && missions.right <= events.left && events.right <= bounds.right + 1;
+  })()`), "Mobile yearly analytics show event totals without overlapping mission totals");
+  await evaluate("document.querySelector('.data-trend').scrollIntoView({ block: 'start' })");
+  await sleep(250);
+  const dataMobileScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "data-year-events-mobile.png"), Buffer.from(dataMobileScreenshot.data, "base64"));
   await view(1);
   await waitFor(mapReady, "remounted map");
   assert.deepEqual(errors, []);

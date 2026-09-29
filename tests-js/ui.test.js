@@ -51,6 +51,12 @@ test("footer legal notices and external icon links are complete", () => {
   assert.doesNotMatch(footer, /city-name-credits\.html/);
 });
 
+test("mobile yearly analytics keep event totals visible", () => {
+  const dataStyles = readFileSync(new URL("../src/styles/views/data.css", import.meta.url), "utf8");
+  assert.match(dataStyles, /\.data-year-row \{ grid-template-columns: 44px minmax\(60px, 1fr\) 50px 58px;/);
+  assert.doesNotMatch(dataStyles, /\.data-year-row span \{ display: none;/);
+});
+
 test("archive table places recorded completions after the event date", () => {
   const table = readFileSync(new URL("../src/components/EventTable.jsx", import.meta.url), "utf8");
   const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
