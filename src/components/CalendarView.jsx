@@ -17,7 +17,10 @@ import {
   groupXmAnomaliesBySeries,
 } from "../utils/calendarActivities";
 import { displayCityName, displayCountryName } from "../utils/locations";
-import { xmAnomalyLogoPath } from "../utils/xmAnomalyLogos";
+import {
+  XM_ANOMALY_FALLBACK_LOGO,
+  xmAnomalyLogoPath,
+} from "../utils/xmAnomalyLogos";
 
 function isoDate(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -78,7 +81,7 @@ function XmAnomalyLogo({ series, eager = false }) {
   const { t } = useLanguage();
   const preferredPath = xmAnomalyLogoPath(series);
   const [failedPath, setFailedPath] = useState(null);
-  const imagePath = failedPath === preferredPath ? "ingress-logo.svg" : preferredPath;
+  const imagePath = failedPath === preferredPath ? XM_ANOMALY_FALLBACK_LOGO : preferredPath;
 
   return (
     <span className="calendar-xma-logo">

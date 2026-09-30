@@ -1,6 +1,8 @@
+export const XM_ANOMALY_FALLBACK_LOGO = "xm-anomaly-logos/ingress-placeholder.png";
+
 const SERIES_LOGOS = Object.freeze({
-  Cassandra: "ingress-logo.svg",
-  "13MAGNUS": "ingress-logo.svg",
+  Cassandra: XM_ANOMALY_FALLBACK_LOGO,
+  "13MAGNUS": XM_ANOMALY_FALLBACK_LOGO,
   Recursion: "xm-anomaly-logos/recursion.webp",
   Interitus: "xm-anomaly-logos/interitus.webp",
   Helios: "xm-anomaly-logos/helios.webp",
@@ -42,9 +44,9 @@ const SERIES_LOGOS = Object.freeze({
 });
 
 export function xmAnomalyLogoPath(series) {
-  return SERIES_LOGOS[series] ?? "ingress-logo.svg";
+  return SERIES_LOGOS[series] ?? XM_ANOMALY_FALLBACK_LOGO;
 }
 
 export function hasSeriesSpecificXmAnomalyLogo(series) {
-  return SERIES_LOGOS[series]?.startsWith("xm-anomaly-logos/") ?? false;
+  return SERIES_LOGOS[series] !== undefined && SERIES_LOGOS[series] !== XM_ANOMALY_FALLBACK_LOGO;
 }
