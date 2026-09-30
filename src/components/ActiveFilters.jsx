@@ -3,17 +3,13 @@ import { X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
 import { displayCountryName } from "../utils/locations";
 import { activeFilterEntries } from "../utils/filters";
+import { activityTypeLabel } from "../utils/activityTypes";
 
 const filterLabels = {
   year: (value, t) => value,
   region: (value, t) => value,
   country: (value, t, language) => displayCountryName(value, undefined, language),
-  missionDayType: (value, t) =>
-    ({
-      "md-xma": t("mdTypeXma"),
-      "md-standard": t("mdTypeStandard"),
-      "md-lite": t("mdTypeLite"),
-    })[value] ?? value,
+  missionDayType: (value, t) => activityTypeLabel(value, t),
   status: (value, t) =>
     ({
       online: t("online"),

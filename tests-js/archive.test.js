@@ -106,6 +106,23 @@ test("Mission Day type combines with the other filters", () => {
   assert.deepEqual(filterEvents(events, filters).map((event) => event.id), ["a"]);
 });
 
+test("archive activity type filtering includes non-MD records without treating them as MD", () => {
+  const officialEvent = {
+    ...events[1],
+    id: "goruck",
+    missionDayType: undefined,
+    activityType: "goruck",
+    title: "GR: Scavenger Hunt",
+  };
+  assert.deepEqual(
+    filterEvents(
+      [...events, officialEvent],
+      { ...INITIAL_FILTERS, missionDayType: "goruck" },
+    ).map((event) => event.id),
+    ["goruck"],
+  );
+});
+
 test("filtered calendar counts are derived from visible events", () => {
   assert.deepEqual(countEventsByYear(events.slice(0, 1)), { 2024: 1 });
   assert.deepEqual(countEventsByYear(events), { 2023: 1, 2024: 2 });

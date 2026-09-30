@@ -353,6 +353,7 @@ try {
   await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
   await view(2);
   await waitFor(() => visible(".event-row"), "archive");
+  assert.ok(await evaluate("document.querySelector('.archive-tools strong').textContent.includes('795')"));
   assert.ok(await evaluate(`document.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)})`));
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
@@ -503,6 +504,29 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   })()`);
   await waitFor(() => visible('.event-row:nth-child(2)'), "clear search");
+
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'GORUCK');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => evaluate("document.querySelector('.event-row .activity-type')?.classList.contains('activity-type--goruck')"),
+    "GORUCK archive results",
+  );
+  assert.ok(await evaluate("getComputedStyle(document.querySelector('.activity-type--goruck')).color === 'rgb(126, 219, 149)'"));
+  await click('.event-row');
+  await waitFor(() => visible('.mission-row'), "GORUCK mission details");
+  assert.equal(await evaluate("document.querySelector('.event-facts .activity-type')?.textContent.trim()"), "GORUCK");
+  const officialMissionScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-goruck-mobile.png"), Buffer.from(officialMissionScreenshot.data, "base64"));
+  await click('.detail-panel__heading button');
+  await evaluate(`(() => {
+    const input = document.querySelector('#archive-search-input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(() => visible('.event-row:nth-child(2)'), "clear GORUCK search");
 
   failNext.eventDetail = 1;
   await click(`.event-row:nth-child(${secondMissionRow + 1})`);

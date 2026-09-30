@@ -1,4 +1,5 @@
 import { citySearchAliases, countrySearchAliases, normalizeCountryCode } from "./locations.js";
+import { eventActivityType } from "./activityTypes.js";
 
 export const INITIAL_FILTERS = {
   query: "",
@@ -39,7 +40,7 @@ export function filterEvents(
     ) return false;
     if (
       filters.missionDayType !== "all" &&
-      event.missionDayType !== filters.missionDayType
+      eventActivityType(event) !== filters.missionDayType
     ) return false;
     if (filters.status !== "all" && event.status !== filters.status) return false;
     return matchesQuery(event, deferredQuery, searchIndex?.[event.id] ?? event.searchText);

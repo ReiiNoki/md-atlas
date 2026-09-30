@@ -1,10 +1,11 @@
 import { INITIAL_FILTERS } from "./archive.js";
+import { ACTIVITY_TYPES, OFFICIAL_MISSION_TYPES } from "./activityTypes.js";
 
 /** Views and filter enums mirrored from the UI so links can be validated lazily. */
 export const URL_VIEWS = ["map", "archive", "calendar", "data"];
 export const URL_REGIONS = ["APAC", "EMEA", "AMER"];
 export const URL_STATUSES = ["online", "partially_offline", "scheduled", "offline"];
-export const URL_MISSION_DAY_TYPES = ["md-xma", "md-standard", "md-lite"];
+export const URL_MISSION_DAY_TYPES = ACTIVITY_TYPES;
 
 const YEAR_PATTERN = /^\d{4}$/;
 const COUNTRY_PATTERN = /^[A-Za-z]{2}$/;
@@ -35,9 +36,11 @@ export function parseUrlState(search = window.location.search) {
       country: countryParam && COUNTRY_PATTERN.test(countryParam)
         ? countryParam.toUpperCase()
         : "all",
-      missionDayType: URL_MISSION_DAY_TYPES.includes(missionDayTypeParam)
-        ? missionDayTypeParam
-        : "all",
+      missionDayType:
+        URL_MISSION_DAY_TYPES.includes(missionDayTypeParam) &&
+        (viewParam === "archive" || !OFFICIAL_MISSION_TYPES.includes(missionDayTypeParam))
+          ? missionDayTypeParam
+          : "all",
       status: URL_STATUSES.includes(statusParam) ? statusParam : "all",
     },
     event: params.get("event") || null,

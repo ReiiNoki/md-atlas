@@ -6,7 +6,7 @@
 
 ## About
 
-MD Atlas documents Ingress Mission Day events from around the world. It brings together event dates, locations, and mission data so that records scattered across different years and cities are easier to find and revisit.
+MD Atlas documents Ingress Mission Day events from around the world. It brings together event dates, locations, and mission data so that records scattered across different years and cities are easier to find and revisit. The Archive also includes reviewed GORUCK, Intel Ops, brand and anime collaboration, and special-event mission sets under their own activity types.
 
 Whether you want to look back on an event you attended, explore missions from another city, or understand how Mission Day has evolved and spread over time, MD Atlas provides a place to start.
 
@@ -25,7 +25,7 @@ Some event or mission records remain incomplete. Missing information is shown as
 ## Ways to Explore
 
 - **Map:** Discover Mission Day events by geographic location.
-- **Archive:** Search cities, countries or territories, and mission titles; filter by year, region, country or territory, and status; and inspect event and mission details.
+- **Archive:** Search cities, countries or territories, and mission titles; filter by year, region, country or territory, activity type, and status; and inspect Mission Day and supplemental event details.
 - **Calendar:** Browse Mission Day and XM Anomaly events by month and year, together or as separate activity types.
 - **Data:** Explore distributions by year, geography, and publisher, along with completion rankings and the ten highest- and lowest-rated events and individual missions.
 
@@ -33,7 +33,7 @@ The interface is available in Chinese, English, and Japanese and supports both d
 
 ## Data Sources and Notes
 
-Mission Day and mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/). XM Anomaly schedules prioritize official Ingress materials and are cross-checked against historical results and event records. Anomaly marks in the calendar are locally optimized copies of historical badge or season artwork catalogued by [Ingress Plus](https://ingress.plus/badges).
+Mission Day and supplemental archive mission data primarily comes from [Bannergress](https://bannergress.com/) and the [Ingress Intel Map](https://intel.ingress.com/). XM Anomaly schedules prioritize official Ingress materials and are cross-checked against historical results and event records. Anomaly marks in the calendar are locally optimized copies of historical badge or season artwork catalogued by [Ingress Plus](https://ingress.plus/badges).
 
 - **This is not a live database:** The site presents snapshots captured at particular times. Mission availability, ratings, and completion counts may have changed since collection.
 - **Historical coverage may be incomplete:** An event missing from the archive does not mean it never took place, and a missing mission field does not mean the mission itself does not exist.

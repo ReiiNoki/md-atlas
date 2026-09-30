@@ -1,8 +1,21 @@
 import { Filter, X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
 import { displayCountryName } from "../utils/locations";
+import {
+  ACTIVITY_TYPES,
+  OFFICIAL_MISSION_TYPES,
+  activityTypeLabel,
+} from "../utils/activityTypes";
 
-export function FilterConsole({ filters, years, countries = [], onFilterChange, onReset, onClose }) {
+export function FilterConsole({
+  filters,
+  years,
+  countries = [],
+  includeOfficialTypes = false,
+  onFilterChange,
+  onReset,
+  onClose,
+}) {
   const { language, formatNumber, t } = useLanguage();
   // Present countries by their localized display name instead of archive order.
   const sortedCountries = [...countries].sort((a, b) =>
@@ -70,15 +83,17 @@ export function FilterConsole({ filters, years, countries = [], onFilterChange, 
         </select>
       </label>
       <label>
-        {t("missionDayType")}
+        {t(includeOfficialTypes ? "activityType" : "missionDayType")}
         <select
           value={filters.missionDayType}
           onChange={(event) => onFilterChange("missionDayType", event.target.value)}
         >
-          <option value="all">{t("allMissionDayTypes")}</option>
-          <option value="md-xma">{t("mdTypeXma")}</option>
-          <option value="md-standard">{t("mdTypeStandard")}</option>
-          <option value="md-lite">{t("mdTypeLite")}</option>
+          <option value="all">{t(includeOfficialTypes ? "allActivityTypes" : "allMissionDayTypes")}</option>
+          {ACTIVITY_TYPES.filter(
+            (type) => includeOfficialTypes || !OFFICIAL_MISSION_TYPES.includes(type),
+          ).map((type) => (
+            <option key={type} value={type}>{activityTypeLabel(type, t)}</option>
+          ))}
         </select>
       </label>
       <label>

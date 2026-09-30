@@ -44,6 +44,17 @@ test("non-default state round-trips through serialize and parse", () => {
   assert.deepEqual(parseUrlState(search), state);
 });
 
+test("non-MD activity filters are shareable only in the archive view", () => {
+  const archiveState = {
+    view: "archive",
+    filters: { ...INITIAL_FILTERS, missionDayType: "goruck" },
+    event: null,
+  };
+  assert.deepEqual(parseUrlState(serializeUrlState(archiveState)), archiveState);
+  assert.equal(parseUrlState("?view=map&type=goruck").filters.missionDayType, "all");
+  assert.equal(parseUrlState("?view=data&type=intel_ops").filters.missionDayType, "all");
+});
+
 test("invalid values fall back to defaults instead of breaking the link", () => {
   const parsed = parseUrlState("?view=explorer&q=&year=20x4&region=MARS&country=JPN&type=other&status=hidden&event=");
   assert.equal(parsed.view, "map");

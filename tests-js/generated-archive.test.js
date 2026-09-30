@@ -11,6 +11,12 @@ const analyticsPayload = JSON.parse(
 const searchIndex = JSON.parse(
   await readFile(new URL("data/search-index.json", publicRoot), "utf8"),
 );
+const officialMissions = JSON.parse(
+  await readFile(new URL("data/official-missions.json", publicRoot), "utf8"),
+);
+const officialMissionSearchIndex = JSON.parse(
+  await readFile(new URL("data/official-mission-search-index.json", publicRoot), "utf8"),
+);
 
 test("generated archive metadata matches event summaries", () => {
   assert.equal(archive.meta.eventCount, archive.events.length);
@@ -72,6 +78,37 @@ test("every event has one audited Mission Day type", () => {
     counts[event.missionDayType] = (counts[event.missionDayType] ?? 0) + 1;
   }
   assert.deepEqual({ ...counts }, { "md-xma": 223, "md-lite": 11, "md-standard": 544 });
+});
+
+test("archive-only official mission sets stay separate from Mission Day data", async () => {
+  assert.equal(officialMissions.meta.eventCount, 17);
+  assert.equal(officialMissions.meta.missionCount, 136);
+  assert.equal(archive.meta.eventCount, 778);
+  const missionDayIds = new Set(archive.events.map((event) => event.id));
+  const typeCounts = Object.create(null);
+  let missionCount = 0;
+  for (const event of officialMissions.events) {
+    assert.equal(missionDayIds.has(event.id), false);
+    typeCounts[event.activityType] = (typeCounts[event.activityType] ?? 0) + 1;
+    assert.equal(typeof officialMissionSearchIndex[event.id], "string");
+    const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+    assert.equal(detail.id, event.id);
+    assert.equal(detail.activityType, event.activityType);
+    assert.equal(detail.missions.length, event.missionCount);
+    missionCount += detail.missions.length;
+  }
+  assert.deepEqual({ ...typeCounts }, {
+    anime_collaboration: 2,
+    brand_campaign: 5,
+    goruck: 4,
+    intel_ops: 2,
+    special_event: 4,
+  });
+  assert.equal(missionCount, 136);
+  assert.equal(
+    officialMissions.events.find((event) => event.id === "gr-fredericksburg-scavenger-hunt-ebf6").date,
+    null,
+  );
 });
 
 test("the 2026 Denver banner replaces its placeholder without overwriting the 2016 event", async () => {

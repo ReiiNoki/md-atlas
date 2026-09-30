@@ -27,7 +27,7 @@
   .event-row__place strong { overflow: hidden; color: var(--color-text); font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .event-row.is-selected .event-row__place strong { color: var(--color-cyan); }
   .event-row__place small { display: flex; align-items: center; gap: 4px; overflow: hidden; color: var(--color-text-muted); font-size: var(--text-meta); text-overflow: ellipsis; white-space: nowrap; }
-  .event-row__place small .md-type { margin-left: 8px; }
+  .event-row__place small .activity-type { margin-left: 8px; }
   .event-row__completions, .event-row__count { display: flex; align-items: baseline; gap: 4px; color: var(--color-text); font-family: var(--font-mono); }
   .event-row__completions { color: var(--color-cyan-soft); }
   .event-row__completions small, .event-row__count small { display: none; }

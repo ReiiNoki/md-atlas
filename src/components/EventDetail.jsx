@@ -9,11 +9,12 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { MissionDayTypeBadge } from "./MissionDayTypeBadge";
+import { ActivityTypeBadge } from "./ActivityTypeBadge";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
 import { eventMapLocation, eventMapTitle } from "../utils/eventMapLabel";
+import { eventActivityType } from "../utils/activityTypes";
 
 const formatCoordinate = (value, positive, negative, fallback) => {
   if (typeof value !== "number") return fallback;
@@ -172,8 +173,8 @@ export function EventDetail({
           <dd>{event.region}</dd>
         </div>
         <div>
-          <dt>{t("missionDayType")}</dt>
-          <dd><MissionDayTypeBadge type={event.missionDayType} /></dd>
+          <dt>{t("activityType")}</dt>
+          <dd><ActivityTypeBadge type={eventActivityType(event)} /></dd>
         </div>
         <div>
           <dt>{t("missionCount")}</dt>

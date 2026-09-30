@@ -30,7 +30,7 @@ test("translations interpolate named values and fall back safely", () => {
   );
   assert.equal(
     translate("zh", "missionImageAlt", { city: "佛山" }),
-    "佛山 Mission Day 任务图像",
+    "佛山 任务图像",
   );
   assert.equal(
     translate("ja", "calendarDayTitle", { count: 2, locations: "東京" }),

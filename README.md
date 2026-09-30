@@ -6,7 +6,7 @@
 
 ## 项目简介
 
-MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期、举办地点和任务数据，让散落在不同年份、不同城市的活动记录更容易查找和回顾。
+MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期、举办地点和任务数据，让散落在不同年份、不同城市的活动记录更容易查找和回顾。档案页另收录经过审核的 GORUCK、Intel Ops、品牌与动画联动、特别活动任务组，并以独立类别标识。
 
 无论是寻找曾经参加过的活动、探索其他城市的任务，还是了解 Mission Day 历年的分布与变化，都可以从这里开始。
 
@@ -25,7 +25,7 @@ MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期�
 ## 浏览方式
 
 - **地图**：从地理位置探索各地的 Mission Day 活动。
-- **档案**：搜索城市、国家或地区及任务标题，按年份、地区和状态筛选，查看活动与任务详情。
+- **档案**：搜索城市、国家或地区及任务标题，按年份、地区、活动类别和状态筛选，查看 Mission Day 与补充活动的任务详情。
 - **日历**：按年月浏览 Mission Day 与 XM Anomaly，并可单独筛选两类活动。
 - **数据**：查看年份、地域和发布者分布，以及完成次数排行、活动与单任务的最高和最低评分 Top 10。
 
@@ -33,7 +33,7 @@ MD Atlas 记录世界各地的 Ingress Mission Day 活动，整理活动日期�
 
 ## 数据来源与说明
 
-Mission Day 与任务数据主要来自 [Bannergress](https://bannergress.com/) 和 [Ingress Intel Map](https://intel.ingress.com/)；XM Anomaly 日程优先根据 Ingress 官方资料整理，并以历史成绩和活动资料交叉核对。日历中的 Anomaly 标志为 [Ingress Plus](https://ingress.plus/badges) 收录的历史徽章或赛季图稿之本地优化版本。
+Mission Day 与档案中的补充任务数据主要来自 [Bannergress](https://bannergress.com/) 和 [Ingress Intel Map](https://intel.ingress.com/)；XM Anomaly 日程优先根据 Ingress 官方资料整理，并以历史成绩和活动资料交叉核对。日历中的 Anomaly 标志为 [Ingress Plus](https://ingress.plus/badges) 收录的历史徽章或赛季图稿之本地优化版本。
 
 - **档案不是实时数据**：页面展示采集时的数据快照，任务状态、评分与完成次数可能已经发生变化。
 - **历史记录可能存在缺失**：未收录的活动不代表未曾举办，缺少某项任务数据也不代表该任务不存在。

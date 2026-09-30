@@ -26,6 +26,8 @@ import {
 } from "./utils/archive";
 import { parseUrlState, serializeUrlState } from "./utils/urlState";
 import { filterXmAnomalies, normalizeXmAnomalies } from "./utils/calendarActivities";
+import { OFFICIAL_MISSION_TYPES } from "./utils/activityTypes";
+import { normalizeOfficialMissionArchive } from "./utils/officialMissions";
 
 // Chunk loaders stay resolvable outside render so a failed fetch can be
 // retried with a fresh import() call.
@@ -55,6 +57,10 @@ export default function App() {
   const [searchIndex, setSearchIndex] = useState(null);
   const [searchIndexState, setSearchIndexState] = useState("idle");
   const [searchAttempt, setSearchAttempt] = useState(0);
+  const [officialMissionArchive, setOfficialMissionArchive] = useState(null);
+  const [officialMissionSearchIndex, setOfficialMissionSearchIndex] = useState(null);
+  const [officialMissionState, setOfficialMissionState] = useState("idle");
+  const [officialMissionAttempt, setOfficialMissionAttempt] = useState(0);
   const [loadState, setLoadState] = useState("loading");
   const [loadError, setLoadError] = useState("");
   const [analytics, setAnalytics] = useState(null);
@@ -87,14 +93,26 @@ export default function App() {
   const [isPending, startTransition] = useTransition();
   const deferredQuery = useDeferredValue(filters.query);
   const searchRequested = Boolean(filters.query.trim());
-  // Mission titles live only in the separate index. Never present summary-only
-  // matches as complete results while that index is missing.
-  const searchBlocked = searchRequested && !searchIndex;
+  // Mission titles live only in separate indexes. Never present summary-only
+  // matches as complete results while an index required by this view is missing.
+  const searchBlocked = searchRequested && (
+    !searchIndex || (activeView === "archive" && !officialMissionSearchIndex)
+  );
+  const searchLoadFailed = searchIndexState === "error" || (
+    activeView === "archive" && officialMissionState === "error"
+  );
   const retrySearch = () => {
-    setSearchIndexState("loading");
-    setSearchAttempt((attempt) => attempt + 1);
+    if (!searchIndex) {
+      setSearchIndexState("loading");
+      setSearchAttempt((attempt) => attempt + 1);
+    }
+    if (activeView === "archive" && !officialMissionSearchIndex) {
+      setOfficialMissionState("loading");
+      setOfficialMissionAttempt((attempt) => attempt + 1);
+    }
   };
   const filterButtonRef = useRef(null);
+  const initialOfficialSelectionHandledRef = useRef(false);
   // URL bookkeeping: whether the current selection was user/url requested, and
   // how the next effect-driven write should land in history (typing replaces,
   // discrete actions push).
@@ -153,21 +171,60 @@ export default function App() {
     return () => controller.abort();
   }, [searchAttempt, searchIndex, searchRequested]);
 
-  const years = useMemo(
-    () =>
-      Object.keys(archive.meta.yearCounts)
-        .map(Number)
-        .sort((a, b) => b - a),
-    [archive.meta.yearCounts],
+  useEffect(() => {
+    if (activeView !== "archive" || officialMissionArchive) return undefined;
+    const controller = new AbortController();
+    setOfficialMissionState("loading");
+    Promise.all([
+      fetch(assetUrl("data/official-missions.json"), { signal: controller.signal }),
+      fetch(assetUrl("data/official-mission-search-index.json"), { signal: controller.signal }),
+    ])
+      .then(async ([archiveResponse, indexResponse]) => {
+        if (!archiveResponse.ok) throw new Error(`HTTP ${archiveResponse.status}`);
+        if (!indexResponse.ok) throw new Error(`HTTP ${indexResponse.status}`);
+        return Promise.all([archiveResponse.json(), indexResponse.json()]);
+      })
+      .then(([archivePayload, indexPayload]) => {
+        const normalized = normalizeOfficialMissionArchive(archivePayload, indexPayload);
+        setOfficialMissionArchive(normalized.archive);
+        setOfficialMissionSearchIndex(normalized.searchIndex);
+        setOfficialMissionState("ready");
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setOfficialMissionState("error");
+      });
+    return () => controller.abort();
+  }, [activeView, officialMissionArchive, officialMissionAttempt]);
+
+  const archiveEvents = useMemo(
+    () => [...archive.events, ...(officialMissionArchive?.events ?? [])],
+    [archive.events, officialMissionArchive],
+  );
+  const visibleEventSource = activeView === "archive" ? archiveEvents : archive.events;
+  const visibleSearchIndex = useMemo(
+    () => activeView === "archive" && officialMissionSearchIndex
+      ? { ...(searchIndex ?? {}), ...officialMissionSearchIndex }
+      : searchIndex,
+    [activeView, officialMissionSearchIndex, searchIndex],
   );
 
-  // Country options come from the full archive so the list stays stable while
-  // other filters are active; counts reflect the whole archive.
-  const countries = useMemo(() => countEventsByCountry(archive.events), [archive.events]);
+  const years = useMemo(
+    () =>
+      [...new Set(visibleEventSource.map((event) => event.year).filter(Number.isFinite))]
+        .sort((a, b) => b - a),
+    [visibleEventSource],
+  );
+
+  // Country options follow the active view's complete source collection while
+  // remaining stable as the user changes individual filters.
+  const countries = useMemo(
+    () => countEventsByCountry(visibleEventSource),
+    [visibleEventSource],
+  );
 
   const filteredEvents = useMemo(
-    () => filterEvents(archive.events, filters, deferredQuery, searchIndex),
-    [archive.events, deferredQuery, filters, searchIndex],
+    () => filterEvents(visibleEventSource, filters, deferredQuery, visibleSearchIndex),
+    [deferredQuery, filters, visibleEventSource, visibleSearchIndex],
   );
 
   // A URL-selected event resolves against the full archive so a shared link
@@ -176,13 +233,26 @@ export default function App() {
   // first event in the filtered result set.
   const selectedEvent = useMemo(
     () =>
-      archive.events.find((event) => event.id === selectedId) ??
+      visibleEventSource.find((event) => event.id === selectedId) ??
       filteredEvents[0],
-    [archive.events, filteredEvents, selectedId],
+    [filteredEvents, selectedId, visibleEventSource],
   );
   const selectedEventDetail = selectedEvent
     ? (eventDetails[selectedEvent.id] ?? selectedEvent)
     : null;
+
+  useEffect(() => {
+    if (
+      initialOfficialSelectionHandledRef.current ||
+      activeView !== "archive" ||
+      !initialUrlState.event ||
+      !officialMissionArchive?.events.some((event) => event.id === initialUrlState.event)
+    ) return;
+    initialOfficialSelectionHandledRef.current = true;
+    urlWriteModeRef.current = "replace";
+    urlSelectionIsExplicitRef.current = true;
+    setSelectedId(initialUrlState.event);
+  }, [activeView, initialUrlState.event, officialMissionArchive]);
   const feedEvents = useMemo(
     () =>
       filteredEvents.filter((event) => feedRegion === "all" || event.region === feedRegion),
@@ -266,7 +336,9 @@ export default function App() {
     };
   }, [filterConsoleOpen]);
 
-  const archiveReady = loadState !== "loading";
+  const archiveReady = loadState !== "loading" && (
+    activeView !== "archive" || officialMissionState === "ready"
+  );
 
   // Keep the query string in step with shareable state. Discrete actions push a
   // history entry; search typing and boot-time normalization replace in place.
@@ -319,6 +391,17 @@ export default function App() {
 
   const changeView = (view) => {
     urlWriteModeRef.current = "push";
+    const leavingArchiveOnlyState = view !== "archive" && (
+      OFFICIAL_MISSION_TYPES.includes(filters.missionDayType) ||
+      officialMissionArchive?.events.some((event) => event.id === selectedId)
+    );
+    if (leavingArchiveOnlyState) {
+      urlSelectionIsExplicitRef.current = false;
+      setFilters((current) => ({ ...current, missionDayType: "all" }));
+      setSelectedId(null);
+      setDetailOpen(false);
+      setVisibleCount(60);
+    }
     setActiveView(view);
     setFilterConsoleOpen(false);
     if (view !== "map") setFeedOpen(false);
@@ -400,7 +483,7 @@ export default function App() {
         resultCount={
           filteredEvents.length + (activeView === "calendar" ? filteredXmAnomalies.length : 0)
         }
-        searchState={searchBlocked ? (searchIndexState === "error" ? "error" : "loading") : "ready"}
+        searchState={searchBlocked ? (searchLoadFailed ? "error" : "loading") : "ready"}
         pending={isPending || deferredQuery !== filters.query}
         onClear={clearFilter}
         onReset={resetFromFilterBar}
@@ -409,8 +492,8 @@ export default function App() {
       <main className={`intel-workspace intel-workspace--${activeView}`}>
         {searchBlocked ? (
           <ViewLoading
-            label={t(searchIndexState === "error" ? "searchIndexLoadFailed" : "loadingSearchIndex")}
-            onRetry={searchIndexState === "error" ? retrySearch : undefined}
+            label={t(searchLoadFailed ? "searchIndexLoadFailed" : "loadingSearchIndex")}
+            onRetry={searchLoadFailed ? retrySearch : undefined}
           />
         ) : null}
         {!searchBlocked && activeView === "map" ? (
@@ -433,25 +516,43 @@ export default function App() {
         ) : null}
 
         {!searchBlocked && activeView === "archive" ? (
-          <ViewErrorBoundary key={`archive-${viewEpochs.archive}`} fallback={ViewCrashFallback}>
-            <ArchiveView
-              events={filteredEvents}
-              selectedEvent={selectedEvent}
-              selectedEventDetail={selectedEventDetail}
-              onSelect={selectEvent}
-              detailOpen={detailOpen}
-              onCloseDetail={() => setDetailOpen(false)}
-              detailLoadState={detailLoadState}
-              onRetryDetail={() => {
-                setDetailLoadState("loading");
-                setDetailAttempt((attempt) => attempt + 1);
-              }}
-              visibleCount={visibleCount}
-              onLoadMore={() => setVisibleCount((count) => count + 60)}
-              isPending={isPending}
-              onResetFilters={resetFilters}
+          officialMissionState === "ready" ? (
+            <ViewErrorBoundary key={`archive-${viewEpochs.archive}`} fallback={ViewCrashFallback}>
+              <ArchiveView
+                events={filteredEvents}
+                selectedEvent={selectedEvent}
+                selectedEventDetail={selectedEventDetail}
+                onSelect={selectEvent}
+                detailOpen={detailOpen}
+                onCloseDetail={() => setDetailOpen(false)}
+                detailLoadState={detailLoadState}
+                onRetryDetail={() => {
+                  setDetailLoadState("loading");
+                  setDetailAttempt((attempt) => attempt + 1);
+                }}
+                visibleCount={visibleCount}
+                onLoadMore={() => setVisibleCount((count) => count + 60)}
+                isPending={isPending}
+                onResetFilters={resetFilters}
+              />
+            </ViewErrorBoundary>
+          ) : (
+            <ViewLoading
+              label={t(
+                officialMissionState === "error"
+                  ? "additionalArchiveLoadFailed"
+                  : "loadingAdditionalArchive",
+              )}
+              onRetry={
+                officialMissionState === "error"
+                  ? () => {
+                      setOfficialMissionState("loading");
+                      setOfficialMissionAttempt((attempt) => attempt + 1);
+                    }
+                  : undefined
+              }
             />
-          </ViewErrorBoundary>
+          )
         ) : null}
 
         {!searchBlocked && activeView === "calendar" ? (
@@ -523,6 +624,7 @@ export default function App() {
             filters={filters}
             years={years}
             countries={countries}
+            includeOfficialTypes={activeView === "archive"}
             onFilterChange={updateFilter}
             onReset={resetFilters}
             onClose={() => setFilterConsoleOpen(false)}
