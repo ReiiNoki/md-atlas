@@ -25,6 +25,7 @@ Desktop.ini
 *.pid
 /.tmp/
 /current-page.png
+/public/md-atlas-logo.png
 /screenshots/
 /backup/
 /backups/
