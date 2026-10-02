@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeOfficialMissionArchive } from "../src/utils/officialMissions.js";
+import { normalizeOfficialMissionArchive } from "../src/domain/officialMissions.js";
 
 const event = {
   id: "goruck-example",

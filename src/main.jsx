@@ -24,7 +24,7 @@ import "@fontsource/ibm-plex-mono/latin-ext-400.css";
 import "@fontsource/ibm-plex-mono/latin-ext-500.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import App from "./App";
-import { AppCrashFallback, ViewErrorBoundary } from "./components/ErrorBoundary";
+import { AppCrashFallback, ViewErrorBoundary } from "./shared/ui/ErrorBoundary";
 import { LanguageProvider } from "./i18n.jsx";
 import "./styles.css";
 

@@ -20,6 +20,7 @@
     "test": "node --test \"tests-js/*.test.js\"",
     "test:browser": "npm run build && node scripts/check-map-browser.mjs",
     "test:browser:dev": "node scripts/check-map-browser.mjs --dev",
+    "test:browser:lifecycle": "node scripts/check-data-lifecycle-browser.mjs",
     "test:browser:workers": "npm run build && node scripts/check-map-browser.mjs --workers",
     "test:workers": "node scripts/check-workers.mjs",
     "lint": "eslint .",

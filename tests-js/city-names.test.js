@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { CITY_NAMES_ZH } from "../src/data/cityNames.zh.js";
-import { citySearchAliases, displayCityName } from "../src/utils/locations.js";
-import { filterEvents, INITIAL_FILTERS } from "../src/utils/archive.js";
+import { CITY_NAMES_ZH } from "../src/domain/geography/cityNames.zh.js";
+import { citySearchAliases, displayCityName } from "../src/domain/geography/locations.js";
+import { filterEvents, INITIAL_FILTERS } from "../src/domain/archive.js";
 
 const archive = JSON.parse(readFileSync(new URL("../public/data/archive.json", import.meta.url), "utf8"));
 

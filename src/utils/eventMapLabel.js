@@ -1,4 +1,4 @@
-import { displayCityName, displayCountryName } from "./locations.js";
+import { displayCityName, displayCountryName } from "../domain/geography/locations.js";
 
 // A banner address identifies its map pin, not necessarily the reach of its
 // missions. These events cover multiple municipalities, prefectures or countries.

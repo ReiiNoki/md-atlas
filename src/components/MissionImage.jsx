@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ImageOff, RotateCcw } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
-import { displayCityName } from "../utils/locations";
+import { displayCityName } from "../domain/geography/locations";
 
 export function MissionImage({ event, className = "", eager = false, retryable = false }) {
   const [failedUrl, setFailedUrl] = useState(null);

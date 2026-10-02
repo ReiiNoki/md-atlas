@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { expandAnalytics } from "../src/utils/archive.js";
+import { expandAnalytics } from "../src/domain/archive.js";
 
 const publicRoot = new URL("../public/", import.meta.url);
 const archive = JSON.parse(await readFile(new URL("data/archive.json", publicRoot), "utf8"));

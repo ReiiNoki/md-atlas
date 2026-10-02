@@ -1,5 +1,5 @@
-import { INITIAL_FILTERS } from "./archive.js";
-import { ACTIVITY_TYPES, OFFICIAL_MISSION_TYPES } from "./activityTypes.js";
+import { INITIAL_FILTERS } from "../domain/archive.js";
+import { ACTIVITY_TYPES, OFFICIAL_MISSION_TYPES } from "../domain/activityTypes.js";
 
 /** Views and filter enums mirrored from the UI so links can be validated lazily. */
 export const URL_VIEWS = ["map", "archive", "calendar", "data"];

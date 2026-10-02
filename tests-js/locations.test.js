@@ -6,8 +6,8 @@ import {
   displayCityName,
   displayCountryName,
   normalizeCountryCode,
-} from "../src/utils/locations.js";
-import { filterEvents, INITIAL_FILTERS, matchesQuery } from "../src/utils/archive.js";
+} from "../src/domain/geography/locations.js";
+import { filterEvents, INITIAL_FILTERS, matchesQuery } from "../src/domain/archive.js";
 
 const overrides = [
   ["CN", "China", "中国大陆"],

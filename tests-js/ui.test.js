@@ -1,9 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { activeFilterEntries } from "../src/utils/filters.js";
-import { INITIAL_FILTERS } from "../src/utils/archive.js";
+import { activeFilterEntries } from "../src/domain/filters.js";
+import { INITIAL_FILTERS } from "../src/domain/archive.js";
 import { translate } from "../src/i18n/messages.js";
+import { initialMapFeedOpen } from "../src/features/map/feedState.js";
+import { loadJsxModules } from "./helpers/load-jsx.mjs";
+
+const [renderer, footerView, tableView] = await loadJsxModules(
+  "/tests-js/helpers/render-jsx.jsx", "/src/components/ArchiveStatusBar.jsx", "/src/features/archive/EventTable.jsx",
+);
 
 test("filter indicators omit defaults and whitespace-only searches", () => {
   assert.deepEqual(activeFilterEntries(INITIAL_FILTERS), []);
@@ -38,7 +44,7 @@ test("footer legal notices and external icon links are complete", () => {
     translate("zh", "ingressTrademarkNotice"),
     "Ingress 是 Niantic Inc. 的注册商标。",
   );
-  const footer = readFileSync(new URL("../src/components/ArchiveStatusBar.jsx", import.meta.url), "utf8");
+  const footer = renderer.renderLocalized(footerView.ArchiveStatusBar);
   assert.match(footer, /https:\/\/t\.me\/missiondayatlas/);
   assert.match(footer, /https:\/\/ingress\.com\//);
   assert.match(footer, /https:\/\/bannergress\.com\//);
@@ -58,22 +64,29 @@ test("mobile yearly analytics keep event totals visible", () => {
 });
 
 test("archive table places recorded completions after the event date", () => {
-  const table = readFileSync(new URL("../src/components/EventTable.jsx", import.meta.url), "utf8");
+  const table = renderer.renderLocalized(tableView.EventTable, {
+    events: [{ id: "sample", city: "Tokyo", country: "Japan", countryCode: "JP", date: "2024-01-01", status: "online", completions: 1234, missionCount: 24 }],
+    visibleCount: 60,
+  });
   const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
-  assert.match(table, /t\("date"\)[\s\S]*t\("completionCount"\)[\s\S]*t\("missionCount"\)/);
-  assert.match(table, /sortDateAscending[\s\S]*sortDateDescending/);
-  assert.match(table, /event-table__date-sort/);
-  assert.match(table, /event-row__completions[\s\S]*event\.completions/);
+  const labels = ["date", "completionCount", "missionCount"].map((key) => table.indexOf(translate("zh", key)));
+  assert.ok(labels[0] >= 0 && labels[0] < labels[1] && labels[1] < labels[2]);
+  assert.match(table, /aria-sort="descending"/);
+  assert.ok(table.includes(translate("zh", "sortDateAscending")));
+  assert.match(table, /event-row__completions[^>]*>1,234/);
   assert.match(archiveStyles, /\.event-row__completions, \.event-row__count/);
   assert.doesNotMatch(archiveStyles, /event-row__count::after/);
 });
 
 test("mobile map starts unobstructed and keeps compact overlays available", () => {
-  const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   const responsive = readFileSync(new URL("../src/styles/responsive.css", import.meta.url), "utf8");
   const map = readFileSync(new URL("../src/styles/views/map.css", import.meta.url), "utf8");
-  assert.match(app, /matchMedia\?\.\("\(max-width: 760px\)"\)\.matches/);
-  assert.match(app, /intel-shell intel-shell--\$\{activeView\}/);
+  assert.equal(initialMapFeedOpen((query) => {
+    assert.equal(query, "(max-width: 760px)");
+    return { matches: true };
+  }), false);
+  assert.equal(initialMapFeedOpen(() => ({ matches: false })), true);
+  assert.equal(initialMapFeedOpen(undefined), true);
   assert.match(responsive, /\.intel-shell--map \.intel-statusbar \{ display: none; \}/);
   assert.match(responsive, /\.intel-search \{ position: absolute;/);
   assert.match(map, /\.event-feed__rows > button:nth-child\(n \+ 3\) \{ display: none; \}/);

@@ -1,7 +1,7 @@
 import { ExternalLink, Radio, X } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
-import { displayCityName, displayCountryName } from "../utils/locations";
+import { displayCityName, displayCountryName } from "../domain/geography/locations";
 
 const regions = ["all", "APAC", "EMEA", "AMER"];
 

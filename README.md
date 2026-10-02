@@ -65,3 +65,7 @@ Mission Day 与档案中的补充任务数据主要来自 [Bannergress](https://
 ## 声明与许可
 
 MD Atlas 是爱好者维护的非官方网站，与 Niantic Inc. 无官方关联。Ingress 是 Niantic Inc. 的注册商标。
+
+## 前端开发
+
+架构、状态生命周期、静态数据流及本地验收命令见 [前端架构说明](docs/FRONTEND_ARCHITECTURE.md)。前端构建不调用数据维护工具；重构与本地测试不会部署网站。

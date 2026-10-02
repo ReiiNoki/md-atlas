@@ -1,638 +1,116 @@
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
-import { Database, LoaderCircle, RotateCcw } from "lucide-react";
-import { ArchiveStatusBar } from "./components/ArchiveStatusBar";
-import { ArchiveView } from "./components/ArchiveView";
-import { ActiveFilters } from "./components/ActiveFilters";
-import { activeFilterEntries } from "./utils/filters";
-import { FilterConsole } from "./components/FilterConsole";
-import { ViewErrorBoundary, ViewCrashFallback } from "./components/ErrorBoundary";
-import { RetryableLazyView } from "./components/RetryableLazyView";
-import { MapWorkspace } from "./components/MapWorkspace";
-import { TopBar } from "./components/TopBar";
-import { ViewLoading } from "./components/ViewLoading";
-import { useLanguage } from "./i18n.jsx";
-import {
-  countEventsByCountry,
-  expandAnalytics,
-  filterEvents,
-  INITIAL_FILTERS,
-} from "./utils/archive";
-import { parseUrlState, serializeUrlState } from "./utils/urlState";
-import { filterXmAnomalies, normalizeXmAnomalies } from "./utils/calendarActivities";
-import { OFFICIAL_MISSION_TYPES } from "./utils/activityTypes";
-import { normalizeOfficialMissionArchive } from "./utils/officialMissions";
+import { useDeferredValue, useMemo } from "react";
+import { ExplorerLayout } from "./app/ExplorerLayout";
+import { useExplorerState, useExplorerUrlSync } from "./app/useExplorerState";
+import { useExplorerPanels } from "./app/useExplorerPanels";
+import { resolveExplorerEvent } from "./app/explorerState";
+import { ArchiveBoot } from "./shared/ui/ArchiveBoot";
+import { MapScreen } from "./features/map/MapScreen";
+import { ArchiveScreen } from "./features/archive/ArchiveScreen";
+import { CalendarScreen } from "./features/calendar/CalendarScreen";
+import { AnalyticsScreen } from "./features/analytics/AnalyticsScreen";
+import { countEventsByCountry, filterEvents, INITIAL_FILTERS } from "./domain/archive";
+import { filterXmAnomalies } from "./domain/calendarActivities";
+import { useArchive, useSearchIndex, useOfficialMissions, useXmAnomalies, useAnalytics } from "./data/useStaticDatasets";
+import { EventDetailProvider } from "./data/useEventDetail";
 
-// Chunk loaders stay resolvable outside render so a failed fetch can be
-// retried with a fresh import() call.
-const loadCalendarView = () =>
-  import("./components/CalendarView").then((module) => ({ default: module.CalendarView }));
-const loadDataView = () =>
-  import("./components/DataView").then((module) => ({ default: module.DataView }));
-
-const assetUrl = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`;
-
-const EMPTY_META = {
-  eventCount: 0,
-  missionCount: 0,
-  countryCount: 0,
-  yearCounts: {},
-  yearRange: null,
-  dataQuality: {},
-  source: "Niantic official missions via Bannergress",
-};
+const EMPTY_ARCHIVE = { events: [] };
 
 export default function App() {
-  const { t } = useLanguage();
-  // Shareable state (view, filters, selected event) initializes from the URL so
-  // deep links survive refreshes; UI-only state (drawer and feed) does not.
-  const [initialUrlState] = useState(() => parseUrlState(window.location.search));
-  const [archive, setArchive] = useState({ meta: EMPTY_META, events: [] });
-  const [searchIndex, setSearchIndex] = useState(null);
-  const [searchIndexState, setSearchIndexState] = useState("idle");
-  const [searchAttempt, setSearchAttempt] = useState(0);
-  const [officialMissionArchive, setOfficialMissionArchive] = useState(null);
-  const [officialMissionSearchIndex, setOfficialMissionSearchIndex] = useState(null);
-  const [officialMissionState, setOfficialMissionState] = useState("idle");
-  const [officialMissionAttempt, setOfficialMissionAttempt] = useState(0);
-  const [loadState, setLoadState] = useState("loading");
-  const [loadError, setLoadError] = useState("");
-  const [analytics, setAnalytics] = useState(null);
-  const [analyticsState, setAnalyticsState] = useState("idle");
-  const [analyticsError, setAnalyticsError] = useState("");
-  const [analyticsAttempt, setAnalyticsAttempt] = useState(0);
-  const [xmAnomalies, setXmAnomalies] = useState(null);
-  const [xmAnomalyState, setXmAnomalyState] = useState("idle");
-  const [xmAnomalyAttempt, setXmAnomalyAttempt] = useState(0);
-  const [eventDetails, setEventDetails] = useState({});
-  const [detailLoadState, setDetailLoadState] = useState("idle");
-  const [detailAttempt, setDetailAttempt] = useState(0);
-  const [activeView, setActiveView] = useState(initialUrlState.view);
-  const [filters, setFilters] = useState(initialUrlState.filters);
-  const [feedRegion, setFeedRegion] = useState("all");
-  const [selectedId, setSelectedId] = useState(initialUrlState.event);
-  const [detailOpen, setDetailOpen] = useState(false);
-  // Keep the map unobstructed on a phone while preserving the desktop activity
-  // panel. The panel remains one tap away from the map toolbar.
-  const [feedOpen, setFeedOpen] = useState(
-    () => !window.matchMedia?.("(max-width: 760px)").matches,
-  );
-  const [filterConsoleOpen, setFilterConsoleOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(60);
-  // Per-view retry epochs: bumping reruns the chunk import and remounts the
-  // view's error boundary, giving a failed chunk a genuinely fresh fetch.
-  const [viewEpochs, setViewEpochs] = useState(() => ({ map: 0, archive: 0, calendar: 0, data: 0 }));
-  const retryView = (view) =>
-    setViewEpochs((current) => ({ ...current, [view]: current[view] + 1 }));
-  const [isPending, startTransition] = useTransition();
+  return <EventDetailProvider><Explorer /></EventDetailProvider>;
+}
+
+function Explorer() {
+  const panels = useExplorerPanels();
+  const explorer = useExplorerState(panels.resetPagination);
+  const { view, filters } = explorer.state;
+  const archiveRequest = useArchive();
+  const archive = archiveRequest.data ?? EMPTY_ARCHIVE;
   const deferredQuery = useDeferredValue(filters.query);
   const searchRequested = Boolean(filters.query.trim());
-  // Mission titles live only in separate indexes. Never present summary-only
-  // matches as complete results while an index required by this view is missing.
+  const searchRequest = useSearchIndex(searchRequested);
+  const officialRequest = useOfficialMissions(view === "archive");
+  const officialArchive = officialRequest.data?.archive;
+  const selectedId = useExplorerUrlSync(explorer, archiveRequest.data, officialArchive);
+  const xmRequest = useXmAnomalies(view === "calendar");
+  const analyticsRequest = useAnalytics(view === "data");
   const searchBlocked = searchRequested && (
-    !searchIndex || (activeView === "archive" && !officialMissionSearchIndex)
+    !searchRequest.data || (view === "archive" && !officialRequest.data?.searchIndex)
   );
-  const searchLoadFailed = searchIndexState === "error" || (
-    activeView === "archive" && officialMissionState === "error"
+  const searchFailed = searchRequest.status === "error" || (
+    view === "archive" && officialRequest.status === "error"
   );
   const retrySearch = () => {
-    if (!searchIndex) {
-      setSearchIndexState("loading");
-      setSearchAttempt((attempt) => attempt + 1);
-    }
-    if (activeView === "archive" && !officialMissionSearchIndex) {
-      setOfficialMissionState("loading");
-      setOfficialMissionAttempt((attempt) => attempt + 1);
-    }
+    if (!searchRequest.data) searchRequest.retry();
+    if (view === "archive" && !officialRequest.data?.searchIndex) officialRequest.retry();
   };
-  const filterButtonRef = useRef(null);
-  const initialOfficialSelectionHandledRef = useRef(false);
-  // URL bookkeeping: whether the current selection was user/url requested, and
-  // how the next effect-driven write should land in history (typing replaces,
-  // discrete actions push).
-  const urlSelectionIsExplicitRef = useRef(Boolean(initialUrlState.event));
-  const urlWriteModeRef = useRef("replace");
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadArchive() {
-      try {
-        const response = await fetch(assetUrl("data/archive.json"), {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        setArchive(data);
-        // Honor a URL-selected event once the archive can validate it; never
-        // let the default first item override a deep link.
-        const requestedValid =
-          initialUrlState.event &&
-          data.events.some((event) => event.id === initialUrlState.event);
-        urlWriteModeRef.current = "replace";
-        urlSelectionIsExplicitRef.current = Boolean(requestedValid);
-        setSelectedId(requestedValid ? initialUrlState.event : (data.events[0]?.id ?? null));
-        setLoadState("ready");
-      } catch (error) {
-        if (error.name === "AbortError") return;
-        setLoadError(error.message);
-        setLoadState("error");
-      }
-    }
-
-    loadArchive();
-    return () => controller.abort();
-    // initialUrlState.event is a stable boot-time constant.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!searchRequested || searchIndex) return undefined;
-    const controller = new AbortController();
-    setSearchIndexState("loading");
-    fetch(assetUrl("data/search-index.json"), { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((data) => {
-        setSearchIndex(data);
-        setSearchIndexState("ready");
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") setSearchIndexState("error");
-      });
-    return () => controller.abort();
-  }, [searchAttempt, searchIndex, searchRequested]);
-
-  useEffect(() => {
-    if (activeView !== "archive" || officialMissionArchive) return undefined;
-    const controller = new AbortController();
-    setOfficialMissionState("loading");
-    Promise.all([
-      fetch(assetUrl("data/official-missions.json"), { signal: controller.signal }),
-      fetch(assetUrl("data/official-mission-search-index.json"), { signal: controller.signal }),
-    ])
-      .then(async ([archiveResponse, indexResponse]) => {
-        if (!archiveResponse.ok) throw new Error(`HTTP ${archiveResponse.status}`);
-        if (!indexResponse.ok) throw new Error(`HTTP ${indexResponse.status}`);
-        return Promise.all([archiveResponse.json(), indexResponse.json()]);
-      })
-      .then(([archivePayload, indexPayload]) => {
-        const normalized = normalizeOfficialMissionArchive(archivePayload, indexPayload);
-        setOfficialMissionArchive(normalized.archive);
-        setOfficialMissionSearchIndex(normalized.searchIndex);
-        setOfficialMissionState("ready");
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") setOfficialMissionState("error");
-      });
-    return () => controller.abort();
-  }, [activeView, officialMissionArchive, officialMissionAttempt]);
-
   const archiveEvents = useMemo(
-    () => [...archive.events, ...(officialMissionArchive?.events ?? [])],
-    [archive.events, officialMissionArchive],
+    () => [...archive.events, ...(officialArchive?.events ?? [])],
+    [archive.events, officialArchive],
   );
-  const visibleEventSource = activeView === "archive" ? archiveEvents : archive.events;
-  const visibleSearchIndex = useMemo(
-    () => activeView === "archive" && officialMissionSearchIndex
-      ? { ...(searchIndex ?? {}), ...officialMissionSearchIndex }
-      : searchIndex,
-    [activeView, officialMissionSearchIndex, searchIndex],
+  const source = view === "archive" ? archiveEvents : archive.events;
+  const searchIndex = useMemo(
+    () => view === "archive" && officialRequest.data?.searchIndex
+      ? { ...(searchRequest.data ?? {}), ...officialRequest.data.searchIndex }
+      : searchRequest.data,
+    [view, officialRequest.data, searchRequest.data],
   );
-
   const years = useMemo(
-    () =>
-      [...new Set(visibleEventSource.map((event) => event.year).filter(Number.isFinite))]
-        .sort((a, b) => b - a),
-    [visibleEventSource],
+    () => [...new Set(source.map((event) => event.year).filter(Number.isFinite))].sort((a, b) => b - a),
+    [source],
   );
-
-  // Country options follow the active view's complete source collection while
-  // remaining stable as the user changes individual filters.
-  const countries = useMemo(
-    () => countEventsByCountry(visibleEventSource),
-    [visibleEventSource],
-  );
-
+  const countries = useMemo(() => countEventsByCountry(source), [source]);
   const filteredEvents = useMemo(
-    () => filterEvents(visibleEventSource, filters, deferredQuery, visibleSearchIndex),
-    [deferredQuery, filters, visibleEventSource, visibleSearchIndex],
+    () => filterEvents(source, filters, deferredQuery, searchIndex),
+    [source, filters, deferredQuery, searchIndex],
   );
-
-  // A URL-selected event resolves against the full archive so a shared link
-  // keeps showing its event even when the sharer's filters would hide it.
-  // Filter changes clear selectedId, so normal browsing falls back to the
-  // first event in the filtered result set.
   const selectedEvent = useMemo(
-    () =>
-      visibleEventSource.find((event) => event.id === selectedId) ??
-      filteredEvents[0],
-    [filteredEvents, selectedId, visibleEventSource],
+    () => resolveExplorerEvent(explorer.state, selectedId, source, filteredEvents, archive),
+    [explorer.state, selectedId, source, filteredEvents, archive],
   );
-  const selectedEventDetail = selectedEvent
-    ? (eventDetails[selectedEvent.id] ?? selectedEvent)
-    : null;
-
-  useEffect(() => {
-    if (
-      initialOfficialSelectionHandledRef.current ||
-      activeView !== "archive" ||
-      !initialUrlState.event ||
-      !officialMissionArchive?.events.some((event) => event.id === initialUrlState.event)
-    ) return;
-    initialOfficialSelectionHandledRef.current = true;
-    urlWriteModeRef.current = "replace";
-    urlSelectionIsExplicitRef.current = true;
-    setSelectedId(initialUrlState.event);
-  }, [activeView, initialUrlState.event, officialMissionArchive]);
-  const feedEvents = useMemo(
-    () =>
-      filteredEvents.filter((event) => feedRegion === "all" || event.region === feedRegion),
-    [feedRegion, filteredEvents],
-  );
-
-  useEffect(() => {
-    if (activeView !== "archive" || !detailOpen || !selectedEvent?.detailPath) return;
-    if (eventDetails[selectedEvent.id]) {
-      setDetailLoadState("ready");
-      return;
-    }
-
-    const controller = new AbortController();
-    setDetailLoadState("loading");
-    fetch(assetUrl(selectedEvent.detailPath), { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`Event detail request failed: ${response.status}`);
-        return response.json();
-      })
-      .then((detail) => {
-        setEventDetails((current) => ({ ...current, [selectedEvent.id]: detail }));
-        setDetailLoadState("ready");
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") setDetailLoadState("error");
-      });
-    return () => controller.abort();
-  }, [activeView, detailAttempt, detailOpen, eventDetails, selectedEvent]);
-
-  useEffect(() => {
-    if (activeView !== "calendar" || xmAnomalies) return undefined;
-    const controller = new AbortController();
-    setXmAnomalyState("loading");
-    fetch(assetUrl("data/xm-anomalies.json"), { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((data) => {
-        setXmAnomalies(normalizeXmAnomalies(data));
-        setXmAnomalyState("ready");
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError") setXmAnomalyState("error");
-      });
-    return () => controller.abort();
-  }, [activeView, xmAnomalies, xmAnomalyAttempt]);
-
-  useEffect(() => {
-    if (activeView !== "data" || analytics) return;
-    const controller = new AbortController();
-    setAnalyticsState("loading");
-    fetch(assetUrl("data/analytics.json"), { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((data) => {
-        setAnalytics(expandAnalytics(data));
-        setAnalyticsState("ready");
-      })
-      .catch((error) => {
-        if (error.name === "AbortError") return;
-        setAnalyticsError(error.message);
-        setAnalyticsState("error");
-      });
-    return () => controller.abort();
-  }, [activeView, analytics, analyticsAttempt]);
-
-  useEffect(() => {
-    if (!filterConsoleOpen) return undefined;
-    const trigger = document.activeElement;
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setFilterConsoleOpen(false);
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      window.removeEventListener("keydown", closeOnEscape);
-      trigger?.focus?.();
-    };
-  }, [filterConsoleOpen]);
-
-  const archiveReady = loadState !== "loading" && (
-    activeView !== "archive" || officialMissionState === "ready"
-  );
-
-  // Keep the query string in step with shareable state. Discrete actions push a
-  // history entry; search typing and boot-time normalization replace in place.
-  useEffect(() => {
-    if (!archiveReady) return;
-    const serialized = serializeUrlState({
-      view: activeView,
-      filters,
-      event: urlSelectionIsExplicitRef.current ? selectedId : null,
-    });
-    if (serialized === window.location.search) return;
-    const nextUrl = `${window.location.pathname}${serialized}${window.location.hash}`;
-    if (urlWriteModeRef.current === "push") window.history.pushState(null, "", nextUrl);
-    else window.history.replaceState(null, "", nextUrl);
-  }, [activeView, archiveReady, filters, selectedId]);
-
-  // Back/forward restores view, filters and selection; the detail drawer stays
-  // as-is so returning through history never forces panels open.
-  useEffect(() => {
-    const onPopState = () => {
-      const parsed = parseUrlState(window.location.search);
-      urlWriteModeRef.current = "replace";
-      urlSelectionIsExplicitRef.current = Boolean(parsed.event);
-      startTransition(() => {
-        setActiveView(parsed.view);
-        setFilters(parsed.filters);
-        setSelectedId(parsed.event);
-        setVisibleCount(60);
-        setDetailLoadState(parsed.event && eventDetails[parsed.event] ? "ready" : "idle");
-      });
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [eventDetails]);
-
-  const updateFilter = (key, value) => {
-    urlWriteModeRef.current = key === "query" ? "replace" : "push";
-    urlSelectionIsExplicitRef.current = false;
-    startTransition(() => {
-      setFilters((current) => ({ ...current, [key]: value }));
-      setSelectedId(null);
-      setVisibleCount(60);
-    });
-  };
-
-  const clearFilter = (key) => {
-    updateFilter(key, INITIAL_FILTERS[key]);
-    if (activeFilterEntries(filters).length === 1) filterButtonRef.current?.focus();
-  };
-
-  const changeView = (view) => {
-    urlWriteModeRef.current = "push";
-    const leavingArchiveOnlyState = view !== "archive" && (
-      OFFICIAL_MISSION_TYPES.includes(filters.missionDayType) ||
-      officialMissionArchive?.events.some((event) => event.id === selectedId)
-    );
-    if (leavingArchiveOnlyState) {
-      urlSelectionIsExplicitRef.current = false;
-      setFilters((current) => ({ ...current, missionDayType: "all" }));
-      setSelectedId(null);
-      setDetailOpen(false);
-      setVisibleCount(60);
-    }
-    setActiveView(view);
-    setFilterConsoleOpen(false);
-    if (view !== "map") setFeedOpen(false);
-  };
-
-  const resetFilters = () => {
-    urlWriteModeRef.current = "push";
-    urlSelectionIsExplicitRef.current = false;
-    startTransition(() => {
-      setFilters(INITIAL_FILTERS);
-      setSelectedId(null);
-      setVisibleCount(60);
-    });
-  };
-
-  const resetFromFilterBar = () => {
-    resetFilters();
-    filterButtonRef.current?.focus();
-  };
-
-  const selectEvent = (id) => {
-    urlWriteModeRef.current = "push";
-    urlSelectionIsExplicitRef.current = true;
-    setSelectedId(id);
-    setDetailLoadState(eventDetails[id] ? "ready" : "idle");
-    setDetailOpen(true);
-  };
-
   const filteredXmAnomalies = useMemo(
-    () => filterXmAnomalies(xmAnomalies ?? [], filters, deferredQuery),
-    [deferredQuery, filters, xmAnomalies],
+    () => filterXmAnomalies(xmRequest.data ?? [], filters, deferredQuery),
+    [xmRequest.data, filters, deferredQuery],
   );
+  const updateFilter = (key, value) => {
+    explorer.updateFilter(key, value);
+    panels.resetPagination();
+  };
+  const resetFilters = () => {
+    explorer.resetFilters();
+    panels.resetPagination();
+  };
+  const changeView = (nextView) => {
+    const clearArchive = explorer.changeView(nextView, officialArchive?.events);
+    panels.navigate(nextView, clearArchive);
+  };
+  const selectEvent = (id, nextView) => {
+    explorer.selectEvent(id, nextView);
+    panels.select();
+  };
 
-  const filteredAnalyticsEvents = useMemo(() => {
-    if (!analytics?.events) return [];
-    const visibleEvents = new Map(filteredEvents.map((event) => [event.id, event]));
-    return analytics.events
-      .filter((event) => visibleEvents.has(event.id))
-      .map((event) => ({ ...visibleEvents.get(event.id), ...event }));
-  }, [analytics, filteredEvents]);
-
-  if (loadState === "loading") {
-    return (
-      <main className="boot-screen">
-        <LoaderCircle size={34} strokeWidth={1.1} />
-        <strong>{t("establishingLink")}</strong>
-        <span>{t("indexingArchive")}</span>
-      </main>
-    );
-  }
-
-  if (loadState === "error") {
-    return (
-      <main className="boot-screen boot-screen--error">
-        <Database size={34} strokeWidth={1.1} />
-        <strong>{t("archiveLinkFailed")}</strong>
-        <span>{t("requestErrorDetail", { detail: loadError })}</span>
-        <button className="command-button" type="button" onClick={() => window.location.reload()}>
-          {t("retryLink")} <RotateCcw size={16} />
-        </button>
-      </main>
-    );
-  }
+  if (archiveRequest.status !== "ready") return <ArchiveBoot request={archiveRequest} />;
 
   return (
-    <div className={`intel-shell intel-shell--${activeView}`}>
-      <TopBar
-        activeView={activeView}
-        onViewChange={changeView}
-        filters={filters}
-        onFilterChange={updateFilter}
-        filtersOpen={filterConsoleOpen}
-        onToggleFilters={() => setFilterConsoleOpen((open) => !open)}
-        activeFilterCount={activeFilterEntries(filters).length}
-        filterButtonRef={filterButtonRef}
-      />
-      <ActiveFilters
-        filters={filters}
-        resultCount={
-          filteredEvents.length + (activeView === "calendar" ? filteredXmAnomalies.length : 0)
-        }
-        searchState={searchBlocked ? (searchLoadFailed ? "error" : "loading") : "ready"}
-        pending={isPending || deferredQuery !== filters.query}
-        onClear={clearFilter}
-        onReset={resetFromFilterBar}
-      />
-
-      <main className={`intel-workspace intel-workspace--${activeView}`}>
-        {searchBlocked ? (
-          <ViewLoading
-            label={t(searchLoadFailed ? "searchIndexLoadFailed" : "loadingSearchIndex")}
-            onRetry={searchLoadFailed ? retrySearch : undefined}
-          />
-        ) : null}
-        {!searchBlocked && activeView === "map" ? (
-          <ViewErrorBoundary key={`map-${viewEpochs.map}`} fallback={ViewCrashFallback}>
-            <MapWorkspace
-              events={filteredEvents}
-              selectedEvent={selectedEvent}
-              onSelect={selectEvent}
-              feedEvents={feedEvents}
-              feedRegion={feedRegion}
-              onFeedRegionChange={setFeedRegion}
-              onOpenArchive={() => changeView("archive")}
-              feedOpen={feedOpen}
-              onOpenFeed={() => setFeedOpen(true)}
-              onCloseFeed={() => setFeedOpen(false)}
-              detailOpen={detailOpen}
-              onCloseDetail={() => setDetailOpen(false)}
-            />
-          </ViewErrorBoundary>
-        ) : null}
-
-        {!searchBlocked && activeView === "archive" ? (
-          officialMissionState === "ready" ? (
-            <ViewErrorBoundary key={`archive-${viewEpochs.archive}`} fallback={ViewCrashFallback}>
-              <ArchiveView
-                events={filteredEvents}
-                selectedEvent={selectedEvent}
-                selectedEventDetail={selectedEventDetail}
-                onSelect={selectEvent}
-                detailOpen={detailOpen}
-                onCloseDetail={() => setDetailOpen(false)}
-                detailLoadState={detailLoadState}
-                onRetryDetail={() => {
-                  setDetailLoadState("loading");
-                  setDetailAttempt((attempt) => attempt + 1);
-                }}
-                visibleCount={visibleCount}
-                onLoadMore={() => setVisibleCount((count) => count + 60)}
-                isPending={isPending}
-                onResetFilters={resetFilters}
-              />
-            </ViewErrorBoundary>
-          ) : (
-            <ViewLoading
-              label={t(
-                officialMissionState === "error"
-                  ? "additionalArchiveLoadFailed"
-                  : "loadingAdditionalArchive",
-              )}
-              onRetry={
-                officialMissionState === "error"
-                  ? () => {
-                      setOfficialMissionState("loading");
-                      setOfficialMissionAttempt((attempt) => attempt + 1);
-                    }
-                  : undefined
-              }
-            />
-          )
-        ) : null}
-
-        {!searchBlocked && activeView === "calendar" ? (
-          xmAnomalyState === "ready" ? (
-            <RetryableLazyView
-              load={loadCalendarView}
-              epoch={viewEpochs.calendar}
-              onRetry={() => retryView("calendar")}
-              render={(CalendarView) => (
-                <CalendarView events={filteredEvents} xmAnomalies={filteredXmAnomalies} />
-              )}
-            />
-          ) : (
-            <ViewLoading
-              label={t(
-                xmAnomalyState === "error"
-                  ? "xmAnomalyCalendarLoadFailed"
-                  : "loadingXmAnomalyCalendar",
-              )}
-              onRetry={
-                xmAnomalyState === "error"
-                  ? () => {
-                      setXmAnomalyState("loading");
-                      setXmAnomalyAttempt((attempt) => attempt + 1);
-                    }
-                  : undefined
-              }
-            />
-          )
-        ) : null}
-
-        {!searchBlocked && activeView === "data" ? (
-          analyticsState === "ready" ? (
-            <RetryableLazyView
-              load={loadDataView}
-              epoch={viewEpochs.data}
-              onRetry={() => retryView("data")}
-              render={(DataView) => (
-                <DataView
-                  events={filteredAnalyticsEvents}
-                  onSelect={(id) => {
-                    selectEvent(id);
-                    setActiveView("archive");
-                  }}
-                />
-              )}
-            />
-          ) : (
-            <ViewLoading
-              label={
-                analyticsState === "error"
-                  ? t("analyticsLoadFailed", { detail: analyticsError })
-                  : t("loadingAnalytics")
-              }
-              onRetry={
-                analyticsState === "error"
-                  ? () => {
-                      setAnalyticsError("");
-                      setAnalyticsAttempt((attempt) => attempt + 1);
-                    }
-                  : undefined
-              }
-            />
-          )
-        ) : null}
-
-        {filterConsoleOpen ? (
-          <FilterConsole
-            filters={filters}
-            years={years}
-            countries={countries}
-            includeOfficialTypes={activeView === "archive"}
-            onFilterChange={updateFilter}
-            onReset={resetFilters}
-            onClose={() => setFilterConsoleOpen(false)}
-          />
-        ) : null}
-      </main>
-
-      <ArchiveStatusBar />
-    </div>
+    <ExplorerLayout view={view} filters={filters} years={years} countries={countries}
+      resultCount={filteredEvents.length + (view === "calendar" ? filteredXmAnomalies.length : 0)}
+      pending={explorer.isPending || deferredQuery !== filters.query}
+      searchBlocked={searchBlocked} searchFailed={searchFailed} onRetrySearch={retrySearch}
+      onChangeView={changeView} onUpdateFilter={updateFilter}
+      onClearFilter={(key) => updateFilter(key, INITIAL_FILTERS[key])}
+      onResetFilters={resetFilters} navigationVersion={panels.navigationVersion}
+    >
+      {/* Lightweight owners stay mounted; expensive view subtrees do not.
+          This preserves feed region/count while calendar/table-local state resets. */}
+      <MapScreen active={!searchBlocked && view === "map"} events={filteredEvents}
+        selectedEvent={selectedEvent} onSelect={selectEvent}
+        onOpenArchive={() => changeView("archive")} panels={panels} />
+      <ArchiveScreen active={!searchBlocked && view === "archive"} detailEnabled={view === "archive"}
+        request={officialRequest} events={filteredEvents} selectedEvent={selectedEvent}
+        onSelect={selectEvent} panels={panels} isPending={explorer.isPending} onResetFilters={resetFilters} />
+      <CalendarScreen active={!searchBlocked && view === "calendar"} request={xmRequest}
+        events={filteredEvents} xmAnomalies={filteredXmAnomalies} />
+      <AnalyticsScreen active={!searchBlocked && view === "data"} request={analyticsRequest}
+        events={filteredEvents} onSelect={(id) => selectEvent(id, "archive")} />
+    </ExplorerLayout>
   );
 }

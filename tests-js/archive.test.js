@@ -7,7 +7,7 @@ import {
   INITIAL_FILTERS,
   matchesQuery,
   sortEventsByDate,
-} from "../src/utils/archive.js";
+} from "../src/domain/archive.js";
 
 const events = [
   {

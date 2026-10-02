@@ -1,11 +1,11 @@
 import { Filter, X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
-import { displayCountryName } from "../utils/locations";
+import { displayCountryName } from "../domain/geography/locations";
 import {
   ACTIVITY_TYPES,
   OFFICIAL_MISSION_TYPES,
   activityTypeLabel,
-} from "../utils/activityTypes";
+} from "../domain/activityTypes";
 
 export function FilterConsole({
   filters,

@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
-import { displayCountryName } from "../utils/locations";
-import { activeFilterEntries } from "../utils/filters";
-import { activityTypeLabel } from "../utils/activityTypes";
+import { displayCountryName } from "../domain/geography/locations";
+import { activeFilterEntries } from "../domain/filters";
+import { activityTypeLabel } from "../domain/activityTypes";
 
 const filterLabels = {
   year: (value, t) => value,

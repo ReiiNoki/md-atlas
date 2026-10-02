@@ -1,5 +1,5 @@
 import { useLanguage } from "../i18n.jsx";
-import { ACTIVITY_TYPE_MESSAGES, activityTypeLabel } from "../utils/activityTypes.js";
+import { ACTIVITY_TYPE_MESSAGES, activityTypeLabel } from "../domain/activityTypes.js";
 
 export function ActivityTypeBadge({ type }) {
   const { t } = useLanguage();

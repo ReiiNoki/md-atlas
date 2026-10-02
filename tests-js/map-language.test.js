@@ -8,7 +8,7 @@ import {
   MAP_LABEL_LAYERS,
   MAP_LABEL_SOURCE,
   mapPlaceName,
-} from "../src/data/intelMapStyle.js";
+} from "../src/features/map/intelMapStyle.js";
 
 function label(language, properties) {
   // Compile with the same expression parser used by MapLibre, rather than

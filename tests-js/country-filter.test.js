@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import {
   countEventsByCountry,
   filterEvents,
   INITIAL_FILTERS,
-} from "../src/utils/archive.js";
+} from "../src/domain/archive.js";
 import { translate } from "../src/i18n/messages.js";
+import { explorerReducer, initialExplorerState } from "../src/app/explorerState.js";
+import { loadJsxModules } from "./helpers/load-jsx.mjs";
+
+const [renderer, consoleView, chipsView] = await loadJsxModules(
+  "/tests-js/helpers/render-jsx.jsx", "/src/components/FilterConsole.jsx", "/src/components/ActiveFilters.jsx",
+);
 
 const events = [
   { id: "jp-1", year: 2024, region: "APAC", countryCode: "JP", country: "Japan", status: "online" },
@@ -73,16 +78,18 @@ test("countries sort by count first, then code", () => {
 });
 
 test("country filter is exposed in the filter console and active chips", () => {
-  const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-  const consoleSource = readFileSync(new URL("../src/components/FilterConsole.jsx", import.meta.url), "utf8");
-  const chipsSource = readFileSync(new URL("../src/components/ActiveFilters.jsx", import.meta.url), "utf8");
-  assert.match(consoleSource, /onFilterChange\("country", event\.target\.value\)/);
-  assert.match(consoleSource, /displayCountryName\(code, country, language\)/);
-  assert.match(chipsSource, /country: \(value, t, language\) => displayCountryName\(value, undefined, language\)/);
-  assert.match(
-    appSource,
-    /const updateFilter = [\s\S]*?urlSelectionIsExplicitRef\.current = false;[\s\S]*?setSelectedId\(null\);/,
-  );
+  const state = explorerReducer(initialExplorerState("?view=archive&event=jp-1"),
+    { type: "filter", key: "country", value: "FR" });
+  assert.equal(state.event, null, "Country changes clear an explicit selection");
+  assert.equal(state.writeMode, "push");
+  assert.deepEqual(filterEvents(events, state.filters).map(({ id }) => id), ["fr-1"]);
+  const consoleHtml = renderer.renderLocalized(consoleView.FilterConsole, {
+    filters: state.filters, years: [2024, 2019], countries: countEventsByCountry(events),
+  });
+  const chipsHtml = renderer.renderLocalized(chipsView.ActiveFilters, { filters: state.filters, resultCount: 1 });
+  assert.match(consoleHtml, /option value="FR" selected=""[^>]*>法国 \(1\)/);
+  assert.match(chipsHtml, /class="filter-chip"[^>]*title="法国"/);
+  assert.ok(chipsHtml.includes(translate("zh", "clearFilter", { label: "法国" })));
 });
 
 test("country filter labels are localized in both languages", () => {

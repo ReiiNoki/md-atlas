@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
-import { INITIAL_FILTERS } from "../src/utils/archive.js";
+import { INITIAL_FILTERS } from "../src/domain/archive.js";
 import {
   calendarActivityMarker,
   calendarActivityType,
   filterXmAnomalies,
   groupXmAnomaliesBySeries,
   normalizeXmAnomalies,
-} from "../src/utils/calendarActivities.js";
+} from "../src/domain/calendarActivities.js";
 import {
   hasSeriesSpecificXmAnomalyLogo,
   xmAnomalyLogoPath,

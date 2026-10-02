@@ -14,7 +14,7 @@ import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
 import { eventMapLocation, eventMapTitle } from "../utils/eventMapLabel";
-import { eventActivityType } from "../utils/activityTypes";
+import { eventActivityType } from "../domain/activityTypes";
 
 const formatCoordinate = (value, positive, negative, fallback) => {
   if (typeof value !== "number") return fallback;
