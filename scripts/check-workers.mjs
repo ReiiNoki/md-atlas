@@ -56,12 +56,14 @@ try {
   await credits.body?.cancel();
   await asset(canonical.pathname, "public/city-name-credits.html", /text\/html/);
   assert.equal(new URL("./", canonical).pathname, BASE_PATH, "Attribution return link stays in this app");
-  const navigation = await fetch(`${server.origin}${BASE_PATH}nested/local-spa-probe`, {
-    headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },
-  });
-  assert.equal(navigation.status, 200);
-  assert.deepEqual(Buffer.from(await navigation.arrayBuffer()), index);
-  checks.push("nested SPA navigation uses the prefixed shell");
+  for (const route of ["archive", "calendar", "data", "md/md-2026-asahikawa-ee08", `md/${encodeURIComponent("md-2026-佛山-1394")}?year=2026&country=JP`, "md/nonexistent-event", "nested/local-spa-probe"]) {
+    const navigation = await fetch(`${server.origin}${BASE_PATH}${route}`, {
+      headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" }, redirect: "manual",
+    });
+    assert.equal(navigation.status, 200, route);
+    assert.deepEqual(Buffer.from(await navigation.arrayBuffer()), index, route);
+    checks.push(`SPA shell at ${route}`);
+  }
   // Local workers.dev-style serving has no zone routing. Do not confuse these
   // checks with proof that the real domain's homepage/zone is configured safely.
   for (const path of ["package.json", "wrangler.jsonc", "_headers"]) {

@@ -45,7 +45,7 @@ test("domain routes cannot capture the homepage or similarly named applications"
     return config.routes.some(({ pattern }) => pattern.endsWith("*")
       ? url.startsWith(pattern.slice(0, -1)) : url === pattern);
   }
-  for (const path of ["/md-atlas", "/md-atlas/", "/md-atlas/?lang=en", "/md-atlas/assets/app.js", "/md-atlas/data/archive.json"]) {
+  for (const path of ["/md-atlas", "/md-atlas/", "/md-atlas/?lang=en", "/md-atlas/archive?year=2026&country=JP", "/md-atlas/calendar", "/md-atlas/data", "/md-atlas/md/md-2026-asahikawa-ee08", `/md-atlas/md/${encodeURIComponent("md-2026-佛山-1394")}`, "/md-atlas/assets/app.js", "/md-atlas/data/archive.json"]) {
     assert.equal(matches(path), true, path);
   }
   for (const path of ["/", "/?lang=en", "/about", "/assets/app.js", "/data/archive.json", "/md-atlas-other/", "/md-atlas2", "/MD-ATLAS/", "/md-atlas?lang=en"]) {

@@ -9,8 +9,11 @@ async function files(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   return (await Promise.all(entries.map((entry) => entry.isDirectory() ? files(join(dir, entry.name)) : [join(dir, entry.name)]))).flat();
 }
-const sources = (await files(root)).filter((file) => [".js", ".jsx"].includes(extname(file)));
-const allFiles = new Set(await files(root));
+// Shared deployment constants are also imported by the runtime URL parser.
+const siteConfig = resolve(root, "../site.config.js");
+const sourceFiles = await files(root);
+const sources = [...sourceFiles.filter((file) => [".js", ".jsx"].includes(extname(file))), siteConfig];
+const allFiles = new Set([...sourceFiles, siteConfig]);
 const graph = new Map();
 const label = (file) => relative(root, file).replaceAll("\\", "/");
 for (const file of sources) {

@@ -7,9 +7,9 @@ import {
   writeExplorerUrl,
 } from "./explorerState";
 
-export function useExplorerState(onRestore) {
+export function useExplorerState() {
   const [state, dispatch] = useReducer(explorerReducer, undefined,
-    () => initialExplorerState(window.location.search));
+    () => initialExplorerState(window.location));
   const revisionRef = useRef(0);
   const [isPending, startTransition] = useTransition();
   const send = useCallback((action) => {
@@ -18,19 +18,19 @@ export function useExplorerState(onRestore) {
   const currentRevision = useCallback(() => revisionRef.current, []);
 
   useEffect(() => {
-    const restore = () => {
+    const restore = (event) => {
       // Read history immediately, before scheduling a transition. Revision is
       // advanced immediately too, so an older URL effect cannot write it back.
-      const action = { type: "restore", search: window.location.search,
-        revision: ++revisionRef.current };
+      const action = { type: "restore",
+        location: { pathname: window.location.pathname, search: window.location.search },
+        historyState: event.state, revision: ++revisionRef.current };
       startTransition(() => {
         dispatch(action);
-        onRestore();
       });
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [onRestore]);
+  }, []);
 
   const updateFilter = (key, value) => startTransition(() => send({ type: "filter", key, value }));
   const resetFilters = () => startTransition(() => send({ type: "reset" }));

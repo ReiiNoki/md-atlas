@@ -786,10 +786,57 @@ try {
     await evaluate("new URL(document.querySelector('.intel-statusbar__links img[src$=\"bannergress-logo.png\"]').src).pathname"),
     `${BASE_PATH}bannergress-logo.png`,
   );
-  // Refresh an explicit archive link, then exercise discrete history navigation.
-  await send("Page.navigate", { url: `${pageUrl}?view=archive&event=${encodeURIComponent(firstMissionEvent.id)}` });
+  // Selection routes must restore their originating map screen and drawer.
+  await send('Page.navigate', { url: pageUrl });
+  await waitFor(() => visible('.event-feed__rows button'), 'route history map baseline');
+  const expectSelection = (event) => waitFor(() => evaluate(`
+    location.pathname === ${JSON.stringify(`${BASE_PATH}md/${encodeURIComponent(event.id)}`)} &&
+    document.querySelector('.intel-workspace--map .detail-panel.is-open #event-detail-title')?.textContent === ${JSON.stringify(event.title)}
+  `), `selected route ${event.id}`);
+  await click('.event-feed__rows button:first-child');
+  await expectSelection(firstEvent);
+  await click('.event-feed__rows button:nth-child(2)');
+  await expectSelection(events[1]);
+  await evaluate('history.back()');
+  await expectSelection(firstEvent);
+  await evaluate('history.back()');
+  await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}' && !document.querySelector('.detail-panel.is-open')`), 'Back to root closes resource drawer');
+  await evaluate('history.forward()');
+  await expectSelection(firstEvent);
+  await evaluate('history.forward()');
+  await expectSelection(events[1]);
+
+  // Primary navigation must leave the selection route, even with an open drawer.
+  for (const [index, path, selector] of [[2, 'archive', '.event-row'], [3, 'calendar', '.calendar-days'], [4, 'data', '.data-dashboard']]) {
+    await view(index);
+    await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}${path}' && Boolean(document.querySelector(${JSON.stringify(selector)}))`), `page route ${path}`);
+  }
+  await evaluate('history.back()');
+  await waitFor(() => visible('.calendar-days'), 'page Back to calendar');
+  assert.equal(await evaluate('location.pathname'), `${BASE_PATH}calendar`);
+  await evaluate('history.forward()');
+  await waitFor(() => visible('.data-dashboard'), 'page Forward to data');
+
+  const unicodeEvent = events.find(({ id }) => [...id].some((char) => char.codePointAt(0) > 127));
+  assert.ok(unicodeEvent, 'Expected a real Unicode BannerGress ID');
+  await send('Page.navigate', { url: `${pageUrl}md/${encodeURIComponent(unicodeEvent.id)}?year=2026&country=JP` });
+  await waitFor(() => evaluate(`document.querySelector('.detail-panel.is-open #event-detail-title')?.textContent === ${JSON.stringify(unicodeEvent.title)}`), 'Unicode route selects even when filters hide the event');
+  await send('Page.reload', { ignoreCache: true });
+  await waitFor(() => evaluate(`document.querySelector('.detail-panel.is-open #event-detail-title')?.textContent === ${JSON.stringify(unicodeEvent.title)}`), 'Unicode deep-link refresh');
+  assert.equal(await evaluate("new URLSearchParams(location.search).get('country')"), 'JP');
+  await send('Page.navigate', { url: `${pageUrl}md/nonexistent-event` });
+  await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}archive' && !document.querySelector('.detail-panel.is-open')`), 'unknown ID replaces with archive canonical route');
+  await send('Page.navigate', { url: `${pageUrl}invalid-route?year=2026` });
+  await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}' && new URLSearchParams(location.search).get('year') === '2026'`), 'invalid route normalizes without dropping filters');
+
+  // Refresh a resource pathname, then exercise discrete history navigation.
+  const missionUrl = `${pageUrl}md/${encodeURIComponent(firstMissionEvent.id)}`;
+  await send("Page.navigate", { url: missionUrl });
   await waitFor(() => evaluate(`document.querySelector('.intel-workspace--archive #event-detail-title')?.textContent === ${JSON.stringify(firstMissionEvent.title)}`), "archive deep link refresh");
-  assert.ok(await evaluate(`location.search.includes('event=${encodeURIComponent(firstMissionEvent.id)}')`));
+  assert.equal(await evaluate('location.pathname'), `${BASE_PATH}md/${encodeURIComponent(firstMissionEvent.id)}`);
+  assert.equal(await visible('.detail-panel.is-open'), true, 'Resource navigation opens details');
+  await send('Page.reload', { ignoreCache: true });
+  await waitFor(() => visible('.mission-row'), 'resource refresh restores detail loading');
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible('.mission-row'), "archive detail before calendar reuse");
   const detailRequestsBeforeCalendar = await evaluate(`performance.getEntriesByType('resource').filter(({name}) => name.endsWith(${JSON.stringify(firstMissionEvent.detailPath)})).length`);
@@ -815,7 +862,8 @@ try {
   assert.equal(await evaluate(`performance.getEntriesByType('resource').filter(({name}) => name.endsWith(${JSON.stringify(firstMissionEvent.detailPath)})).length`), detailRequestsBeforeCalendar, "Cross-view detail must not refetch");
   await evaluate("history.back()");
   await waitFor(() => visible('.event-row'), "history restores archive");
-  assert.ok(await evaluate(`location.search.includes('event=${encodeURIComponent(firstMissionEvent.id)}')`));
+  assert.equal(await evaluate('location.pathname'), `${BASE_PATH}md/${encodeURIComponent(firstMissionEvent.id)}`);
+  assert.equal(await visible('.detail-panel.is-open'), true);
   await evaluate("history.forward()");
   await waitFor(() => visible('.calendar-days'), "history forward restores calendar");
   await evaluate("history.back()");
@@ -823,12 +871,15 @@ try {
 
   // Search typing replaces; discrete country changes push and clear selection.
   const beforeTyping = await evaluate("history.length");
-  await evaluate(`(() => {
-    const input = document.querySelector('#archive-search-input');
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(firstMissionEvent.city)});
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  })()`);
-  await waitFor(() => evaluate(`new URLSearchParams(location.search).get('q') === ${JSON.stringify(firstMissionEvent.city)} && !new URLSearchParams(location.search).has('event')`), "search replaces and clears explicit selection");
+  for (const text of [firstMissionEvent.city.slice(0, 1), firstMissionEvent.city.slice(0, 2), firstMissionEvent.city]) {
+    await evaluate(`(() => {
+      const input = document.querySelector('#archive-search-input');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(text)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await waitFor(() => evaluate(`new URLSearchParams(location.search).get('q') === ${JSON.stringify(text)} && location.pathname === '${BASE_PATH}archive'`), "search replaces and clears explicit selection");
+    assert.equal(await evaluate('history.length'), beforeTyping, 'Typing never appends history entries');
+  }
   assert.equal(await evaluate("history.length"), beforeTyping);
   await click('.intel-filter-button');
   await waitFor(() => visible('.filter-console'), "history filter console");
@@ -845,7 +896,7 @@ try {
   await waitFor(() => evaluate(`document.querySelector('.filter-console label:nth-of-type(3) select').value === ${JSON.stringify(firstMissionEvent.countryCode)}`), "country history forward");
 
   // An archive-only URL must survive either order of dataset completion.
-  const officialUrl = `${pageUrl}?view=archive&event=${encodeURIComponent(officialEvent.id)}`;
+  const officialUrl = `${pageUrl}md/${encodeURIComponent(officialEvent.id)}`;
   const mainGate = pauseData(`${BASE_PATH}data/archive.json`);
   await send('Page.navigate', { url: officialUrl });
   await waitFor(() => mainGate.reached, 'paused main archive request');
@@ -853,7 +904,7 @@ try {
   assert.equal(await evaluate('location.href'), officialUrl, 'No early URL normalization');
   mainGate.release();
   await waitFor(() => evaluate(`document.querySelector('.intel-workspace--archive #event-detail-title')?.textContent === ${JSON.stringify(officialEvent.title)}`), 'official deep link when main finishes last');
-  assert.equal(await visible('.archive-layout.detail-closed'), true, 'Refresh does not force drawer open');
+  assert.equal(await visible('.detail-panel.is-open'), true, 'Resource refresh opens the drawer');
 
   const mainFirstGate = pauseData(`${BASE_PATH}data/official-missions.json`);
   await send('Page.navigate', { url: officialUrl });
@@ -875,28 +926,28 @@ try {
   await view(1);
   await waitFor(() => visible('.event-feed__rows button'), 'map during official load');
   await click('.event-feed__rows button');
-  await waitFor(() => evaluate(`new URLSearchParams(location.search).get('event') === ${JSON.stringify(firstEvent.id)}`), 'new explicit map choice');
+  await waitFor(() => evaluate(`location.pathname === ${JSON.stringify(`${BASE_PATH}md/${encodeURIComponent(firstEvent.id)}`)}`), 'new explicit map choice');
   await view(2);
   officialGate.release();
   await waitFor(() => evaluate(`document.querySelector('.intel-workspace--archive #event-detail-title')?.textContent === ${JSON.stringify(firstEvent.title)}`), 'late official payload cannot override user choice');
-  assert.equal(await evaluate("new URLSearchParams(location.search).get('event')"), firstEvent.id);
+  assert.equal(await evaluate('location.pathname'), `${BASE_PATH}archive`, 'Late data does not resurrect the previous resource route');
 
   // Selecting an archive-only activity and leaving clears only archive state.
-  await send('Page.navigate', { url: `${officialUrl}&type=goruck&country=JP` });
+  await send('Page.navigate', { url: `${officialUrl}?type=goruck&country=JP` });
   await waitFor(() => visible('.event-table, .empty-state'), 'archive-only filters loaded');
   await view(3);
-  await waitFor(() => evaluate("new URLSearchParams(location.search).get('view') === 'calendar'"), 'leaving archive-only state');
+  await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}calendar'`), 'leaving archive-only state');
   assert.equal(await evaluate("new URLSearchParams(location.search).has('type') || new URLSearchParams(location.search).has('event')"), false);
   assert.equal(await evaluate("new URLSearchParams(location.search).get('country')"), 'JP');
   await evaluate('history.back()');
   await waitFor(() => evaluate(`document.querySelector('.intel-workspace--archive #event-detail-title')?.textContent === ${JSON.stringify(officialEvent.title)}`), 'history restores archive-only deep link and hidden selection');
   assert.equal(await evaluate("new URLSearchParams(location.search).get('type')"), 'goruck');
-  assert.equal(await visible('.archive-layout.detail-closed'), true, 'History does not reopen drawer');
+  assert.equal(await visible('.detail-panel.is-open'), true, 'History restores the resource drawer');
   assert.deepEqual(errors, []);
 
   // Lightweight screen owners retain only the UI state that historically lived
   // in App. Heavy subtrees must still reset their component-local state.
-  await send('Page.navigate', { url: `${pageUrl}?view=archive` });
+  await send('Page.navigate', { url: `${pageUrl}archive` });
   await waitFor(() => visible('.load-more'), 'pagination baseline');
   await click('.load-more');
   await waitFor(() => evaluate("document.querySelectorAll('.event-row').length === 120"), 'second page');
@@ -938,7 +989,7 @@ try {
   // only inside this browser; no published JSON is changed.
   await send('Network.setCacheDisabled', { cacheDisabled: true });
   corruptDetail = true;
-  await send('Page.navigate', { url: `${pageUrl}?view=archive&event=${encodeURIComponent(firstMissionEvent.id)}` });
+  await send('Page.navigate', { url: `${pageUrl}archive` });
   await waitFor(() => visible('.event-row'), 'archive before intentional render failure');
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible('.intel-workspace--archive .view-crash__actions'), 'archive render-error isolation');
@@ -960,7 +1011,7 @@ try {
   assert.equal(await visible('.event-feed.is-open'), false, 'Fresh phone map stays unobstructed');
   await writeFile(join(artifacts, "results.json"), JSON.stringify({
     result: "pass", mode: workers ? "workers" : dev ? "development" : "production", pageUrl, exceptions: errors, cancelledInterceptions, labelReloadAborts, initialDataRequests,
-    checks: ["map Worker", "rendered multilingual label pixels, rapid selections and label-only tile re-layout", "popup", "localized cities and language menu without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback", "main/official deep links in both completion orders", "new selection supersedes pending boot link", "search replace and country push", "history back/forward", "archive-only state cleanup", "cross-view detail cache", "pagination/feed/calendar lifetimes", "actual map/archive/root render-error isolation"],
+    checks: ["map Worker", "rendered multilingual label pixels, rapid selections and label-only tile re-layout", "popup", "localized cities and language menu without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback", "pathname page/resource routing, Unicode filtered deep-link refresh and invalid route/ID normalization", "map A/B/root Back/Forward selection and drawer restoration", "main/official deep links in both completion orders", "new selection supersedes pending boot link", "search replace and country push", "history back/forward", "archive-only state cleanup", "cross-view detail cache", "pagination/feed/calendar lifetimes", "actual map/archive/root render-error isolation"],
     externalTiles: "synthetic multilingual vector tiles", glyphs: "local browser fonts", images: "blocked",
   }, null, 2));
   console.log(`Browser smoke passed. Artifacts: ${artifacts}`);

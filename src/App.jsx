@@ -20,8 +20,8 @@ export default function App() {
 }
 
 function Explorer() {
-  const panels = useExplorerPanels();
-  const explorer = useExplorerState(panels.resetPagination);
+  const explorer = useExplorerState();
+  const panels = useExplorerPanels(explorer.state);
   const { view, filters } = explorer.state;
   const archiveRequest = useArchive();
   const archive = archiveRequest.data ?? EMPTY_ARCHIVE;

@@ -78,7 +78,7 @@ test("countries sort by count first, then code", () => {
 });
 
 test("country filter is exposed in the filter console and active chips", () => {
-  const state = explorerReducer(initialExplorerState("?view=archive&event=jp-1"),
+  const state = explorerReducer(initialExplorerState({ pathname: "/md-atlas/md/jp-1", search: "" }),
     { type: "filter", key: "country", value: "FR" });
   assert.equal(state.event, null, "Country changes clear an explicit selection");
   assert.equal(state.writeMode, "push");

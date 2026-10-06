@@ -2,8 +2,8 @@ import { INITIAL_FILTERS } from "../domain/archive.js";
 import { OFFICIAL_MISSION_TYPES } from "../domain/activityTypes.js";
 import { parseUrlState, serializeUrlState } from "../utils/urlState.js";
 
-export function initialExplorerState(search) {
-  return { ...parseUrlState(search), defaultScope: "archive", writeMode: "replace", revision: 0 };
+export function initialExplorerState(location) {
+  return { ...parseUrlState(location), defaultScope: "archive", writeMode: "replace", revision: 0, routeVersion: 0 };
 }
 
 export function leavesArchiveOnlyState(state, view, officialEvents = []) {
@@ -30,15 +30,21 @@ export function explorerReducer(state, action) {
       const clear = leavesArchiveOnlyState(state, action.view, action.officialEvents);
       return { ...state, view: action.view,
         filters: clear ? { ...state.filters, missionDayType: "all" } : state.filters,
-        event: clear ? null : state.event,
+        // A primary-page action leaves the resource route, even for MD items.
+        event: null,
         defaultScope: clear ? "filtered" : state.defaultScope, writeMode: "push", revision };
     }
-    case "restore":
-      return { ...parseUrlState(action.search), defaultScope: "filtered", writeMode: "replace", revision };
+    case "restore": {
+      const restored = parseUrlState(action.location);
+      if (restored.event && ["map", "archive"].includes(action.historyState?.mdAtlasView)) {
+        restored.view = action.historyState.mdAtlasView;
+      }
+      return { ...restored, defaultScope: "filtered", writeMode: "replace", revision, routeVersion: revision };
+    }
     case "invalidate":
       // Data becoming ready cannot undo a more recent user/history action.
       return action.expectedRevision === state.revision
-        ? { ...state, event: null, writeMode: "replace", revision }
+        ? { ...state, event: null, writeMode: "replace", revision, routeVersion: revision }
         : state;
     default:
       return state;
@@ -57,15 +63,20 @@ export function resolveExplorerSelection(state, archive, officialArchive) {
 // URL filters hide it. After filtering/reset/history, default to the first
 // filtered result instead. This provenance is not an explicit event ID.
 export function resolveExplorerEvent(state, selectedId, source, filtered, archive) {
-  return source.find(({ id }) => id === selectedId) ??
-    (state.defaultScope === "archive" ? archive?.events[0] : filtered[0]);
+  // A pending/invalid explicit route must not show or fetch the fallback's
+  // detail while its own datasets are still being validated.
+  if (state.event) return source.find(({ id }) => id === selectedId);
+  return state.defaultScope === "archive" ? archive?.events[0] : filtered[0];
 }
 
 export function writeExplorerUrl(state, browser) {
-  const search = serializeUrlState(state);
-  if (search === browser.location.search) return false;
-  const url = `${browser.location.pathname}${search}${browser.location.hash}`;
-  if (state.writeMode === "push") browser.history.pushState(null, "", url);
-  else browser.history.replaceState(null, "", url);
+  const { pathname, search } = serializeUrlState(state);
+  if (pathname === browser.location.pathname && search === browser.location.search) return false;
+  const url = `${pathname}${search}${browser.location.hash}`;
+  // Retain the originating screen for in-session Back/Forward to selections.
+  // A refresh intentionally resolves the resource route to the archive screen.
+  const historyState = { mdAtlasView: state.view };
+  if (state.writeMode === "push") browser.history.pushState(historyState, "", url);
+  else browser.history.replaceState(historyState, "", url);
   return true;
 }
