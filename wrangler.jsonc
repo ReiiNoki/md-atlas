@@ -5,12 +5,8 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "reiinoki.dpdns.org/md-atlas",
-      "zone_name": "reiinoki.dpdns.org"
-    },
-    {
-      "pattern": "reiinoki.dpdns.org/md-atlas/*",
-      "zone_name": "reiinoki.dpdns.org"
+      "pattern": "md-atlas.reiinoki.dpdns.org",
+      "custom_domain": true
     }
   ],
   "assets": {

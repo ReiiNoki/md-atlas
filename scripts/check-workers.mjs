@@ -27,13 +27,8 @@ try {
     return response;
   }
   await asset(BASE_PATH, "dist/index.html", /text\/html/);
-  for (const query of ["", "?from=local-test&lang=en"]) {
-    const response = await fetch(server.origin + BASE_PATH.slice(0, -1) + query, { redirect: "manual" });
-    assert.ok([301, 302, 307, 308].includes(response.status));
-    assert.equal(new URL(response.headers.get("Location"), server.origin).href, server.origin + BASE_PATH + query);
-    await response.body?.cancel();
-  }
-  checks.push("bare path redirects inside the mount, preserving query (local runtime only)");
+  await asset(`${BASE_PATH}?from=local-test&lang=en`, "dist/index.html", /text\/html/);
+  checks.push("root query loads directly without a prefix or redirect");
   const eventFile = (await readdir(join(root, "public/data/events"))).find((name) => name.endsWith(".json"));
   for (const file of ["data/archive.json", "data/analytics.json", `data/events/${eventFile}`]) {
     const response = await asset(BASE_PATH + file, "public/" + file, /application\/json/);
@@ -71,7 +66,7 @@ try {
     const body = Buffer.from(await response.arrayBuffer());
     assert.ok(response.status === 404 || (response.status === 200 && body.equals(index)), path);
   }
-  const result = { result: "pass", origin: server.origin, checks, zoneRouting: "not simulated; narrow patterns checked by unit tests", deployment: false };
+  const result = { result: "pass", origin: server.origin, checks, zoneRouting: "not simulated; dedicated custom domain checked by unit tests", deployment: false };
   await writeFile(join(artifacts, "results.json"), JSON.stringify(result, null, 2));
   console.log(`Workers HTTP checks passed. Artifacts: ${artifacts}`);
 } finally {

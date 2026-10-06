@@ -82,7 +82,13 @@ async function waitFor(check, label, limit = 30000) {
   const end = Date.now() + limit;
   while (Date.now() < end) {
     if (startupError) throw startupError;
-    if (await check()) return;
+    try {
+      if (await check()) return;
+    } catch (error) {
+      // Page.navigate/reload can replace the execution context while this
+      // read-only readiness probe runs. Retry that CDP race, not app errors.
+      if (error.code !== -32000 || error.message !== "Inspected target navigated or closed") throw error;
+    }
     await sleep(100);
   }
   throw new Error(`Timed out: ${label}`);

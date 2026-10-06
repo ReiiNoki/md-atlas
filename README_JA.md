@@ -10,7 +10,7 @@ MD Atlas は、世界各地で開催された Ingress Mission Day を記録す�
 
 参加したイベントを振り返りたいとき、別の都市のミッションを探したいとき、あるいは Mission Day がどのように広がり変化してきたかを知りたいときに、その出発点として利用できます。
 
-**アーカイブを見る：[reiinoki.dpdns.org/md-atlas](https://reiinoki.dpdns.org/md-atlas/)**
+**アーカイブを見る：[md-atlas.reiinoki.dpdns.org](https://md-atlas.reiinoki.dpdns.org/)**
 
 ## 掲載内容
 
@@ -67,6 +67,6 @@ Mission Day とアーカイブの補足ミッションデータは、主に [Ban
 MD Atlas はファンによって運営される非公式プロジェクトであり、Niantic Inc. との公式な関係はありません。Ingress は Niantic Inc. の登録商標です。
 
 - プロジェクトのコードは [MIT License](LICENSE) のもとで公開されています。
-- 中国語地名データセットと出典一覧は **CC BY-SA 4.0** のもとで提供されています。詳しくは[地名の出典・帰属表示ページ](https://reiinoki.dpdns.org/md-atlas/city-name-credits.html)をご覧ください。
+- 中国語地名データセットと出典一覧は **CC BY-SA 4.0** のもとで提供されています。詳しくは[地名の出典・帰属表示ページ](https://md-atlas.reiinoki.dpdns.org/city-name-credits.html)をご覧ください。
 - 地図サービスは OpenFreeMap、地図データは OpenStreetMap によって提供され、必要な帰属表示は地図上に表示されます。
 - イベント、ミッション、地図、画像などの第三者コンテンツに関する権利は、それぞれの権利者に帰属します。これらは本プロジェクトのソースコードライセンスによって再ライセンスされるものではありません。

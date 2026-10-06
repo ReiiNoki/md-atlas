@@ -29,7 +29,7 @@ async function filesIn(directory, prefix = "") {
 }
 
 export async function prepareWorkersAssets(source, destination, basePath = BASE_PATH) {
-  if (!/^\/(?:[A-Za-z0-9_-]+\/)+$/.test(basePath)) {
+  if (basePath !== "/" && !/^\/(?:[A-Za-z0-9_-]+\/)+$/.test(basePath)) {
     throw new Error("Base path must contain normalized directory segments, with leading and trailing slashes");
   }
   source = resolve(source);
@@ -50,11 +50,10 @@ export async function prepareWorkersAssets(source, destination, basePath = BASE_
     await mkdir(dirname(target), { recursive: true });
     await copyFile(join(source, name), target);
   }
-  // Cloudflare SPA fallback always reads /index.html. The same shell references
-  // /md-atlas/ assets. Only the configured domain routes reach this Worker;
-  // this file does not replace the existing website's root page.
-  await copyFile(join(source, "index.html"), join(destination, "index.html"));
-  return files.length + 1;
+  // At the domain root index.html is already in place. Subpath deployments
+  // also need Cloudflare's fixed /index.html SPA fallback entry.
+  if (mount) await copyFile(join(source, "index.html"), join(destination, "index.html"));
+  return files.length + (mount ? 1 : 0);
 }
 
 if (process.argv[1] && relative(resolve(process.argv[1]), fileURLToPath(import.meta.url)) === "") {

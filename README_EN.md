@@ -67,6 +67,6 @@ When possible, include:
 MD Atlas is an unofficial fan-maintained project and is not officially affiliated with Niantic Inc. Ingress is a registered trademark of Niantic Inc.
 
 - Project code is available under the [MIT License](LICENSE).
-- The Chinese place-name dataset and its source list are provided under **CC BY-SA 4.0**; see the [place-name attribution page](https://reiinoki.dpdns.org/md-atlas/city-name-credits.html).
+- The Chinese place-name dataset and its source list are provided under **CC BY-SA 4.0**; see the [place-name attribution page](https://md-atlas.reiinoki.dpdns.org/city-name-credits.html).
 - OpenFreeMap provides the map service, with map data from OpenStreetMap; the required attribution remains visible on the map.
 - Event, mission, map, and image content remains the property of its respective rights holders and is not relicensed by the project's source-code license.

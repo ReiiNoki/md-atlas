@@ -11,8 +11,8 @@ export const URL_MISSION_DAY_TYPES = ACTIVITY_TYPES;
 const YEAR_PATTERN = /^\d{4}$/;
 const COUNTRY_PATTERN = /^[A-Za-z]{2}$/;
 
-// Match the mount boundary before interpreting routes. Never treat a sibling
-// such as /md-atlas-other/archive as a route inside this application.
+// Remove the configured base before interpreting routes. With BASE_PATH = /
+// the application owns the dedicated host's root; subpath mounts remain safe.
 function parsePathname(pathname) {
   const base = BASE_PATH.slice(0, -1);
   if (pathname === base || pathname === BASE_PATH) return { view: "map", event: null };

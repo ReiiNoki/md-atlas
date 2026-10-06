@@ -56,8 +56,8 @@ test("non-MD activity filters remain archive-only, including resource routes", (
   assert.equal(parse("data", "?type=intel_ops").filters.missionDayType, "all");
 });
 
-test("invalid routes and encodings default safely; mount boundary is enforced", () => {
-  for (const pathname of ["/", "/archive", "/md-atlas-other/archive", "/md-atlas/archive/extra", "/md-atlas/md/", "/md-atlas/md/a/b", "/md-atlas/md/%", "/md-atlas/md/%FF", "/md-atlas/nope"]) {
+test("invalid root routes and encodings default safely without interpreting old prefixes", () => {
+  for (const pathname of ["/md-atlas/archive", "/md-atlas-other/archive", "/archive/extra", "/md/", "/md/a/b", "/md/%", "/md/%FF", "/nope"]) {
     const state = parseUrlState({ pathname, search: "?country=JP" });
     assert.equal(state.view, "map", pathname);
     assert.equal(state.event, null, pathname);
@@ -65,8 +65,8 @@ test("invalid routes and encodings default safely; mount boundary is enforced", 
   }
 });
 
-test("bare mount and trailing slashes serialize canonically", () => {
-  assert.deepEqual(serializeUrlState(parseUrlState({ pathname: "/md-atlas" })), location());
+test("root and trailing slashes serialize canonically", () => {
+  assert.deepEqual(serializeUrlState(parseUrlState({ pathname: "/" })), location());
   assert.deepEqual(serializeUrlState(parse("archive/")), location("archive"));
   assert.deepEqual(serializeUrlState(parse("md/foo/")), location("md/foo"));
 });
@@ -187,9 +187,9 @@ test("search replaces, discrete actions push, selection changes pathname, duplic
   const reset = explorerReducer(selected, { type: "reset" });
   writeExplorerUrl(reset, browser);
   assert.deepEqual(writes.map(({ method }) => method), ["replaceState", "pushState", "pushState", "pushState"]);
-  assert.equal(writes[0].url, "/md-atlas/?q=Kyoto#keep");
-  assert.equal(writes[2].url, "/md-atlas/md/md-id?q=Kyoto&year=2019#keep");
-  assert.equal(writes[3].url, "/md-atlas/archive#keep");
+  assert.equal(writes[0].url, "/?q=Kyoto#keep");
+  assert.equal(writes[2].url, "/md/md-id?q=Kyoto&year=2019#keep");
+  assert.equal(writes[3].url, "/archive#keep");
 });
 
 test("Back/Forward restore A/B selection and originating screen; refresh resolves the same resource", () => {

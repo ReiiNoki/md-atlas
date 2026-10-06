@@ -1,13 +1,13 @@
-/md-atlas/assets/*
+/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/md-atlas/data/archive.json
+/data/archive.json
   Cache-Control: public, max-age=300, must-revalidate
 
-/md-atlas/data/analytics.json
+/data/analytics.json
   Cache-Control: public, max-age=300, must-revalidate
 
-/md-atlas/data/events/*
+/data/events/*
   Cache-Control: public, max-age=3600, must-revalidate
 
 /*

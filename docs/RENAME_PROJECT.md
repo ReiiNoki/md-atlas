@@ -11,8 +11,8 @@
 | npm 包名 | `md-atlas`（原本已正确） |
 | GitHub 仓库 | `ReiiNoki/md-atlas` |
 | Cloudflare Worker / 构建连接 | `md-atlas` |
-| 正式入口 | `https://reiinoki.dpdns.org/md-atlas/` |
-| 静态包中的应用目录 | `.wrangler/assets/md-atlas/` |
+| 正式入口 | `https://md-atlas.reiinoki.dpdns.org/` |
+| 静态包中的应用目录 | `.wrangler/assets/` |
 
 旧拼写仅用于迁移说明、回归测试反例及真实历史记录；不要重写既有提交、备份或原始业务数据。
 
@@ -22,7 +22,7 @@
 
 先记录原主站、旧 Worker 的 Routes / Custom Domains 和 Redirect Rules。
 暂停或断开旧 `md-altas` Worker 的 Git 自动构建连接，但**不要删除其已部署版本、路由或 DNS**。
-新 Worker 和 `/md-atlas/` 不得覆盖同名的其他项目；先核对目标名称和路径是否可用。
+新 Worker 和 `md-atlas.reiinoki.dpdns.org` 不得覆盖同名的其他项目；先核对目标名称和域名是否可用。
 
 仅改 `wrangler.jsonc.name` 不能完成云端改名。项目固定的 Wrangler 4.131.1 在检测到
 `WRANGLER_CI_OVERRIDE_NAME` 与配置不同时，会警告并使用构建系统指定的名称；连接式构建还可能提出改回名称的 PR。
@@ -61,22 +61,16 @@ git -C frontend ls-remote --refs origin refs/heads/main
 - 构建凭据需要正确的 zone 读取及 Workers Routes 编辑权限。
 - 核对 GitHub 应用仍授权正确的重命名后仓库；不要把 PAT 写入构建命令。
 
-新配置只管理下面两条路由：
+新配置只管理独立子域名的 Custom Domain：`md-atlas.reiinoki.dpdns.org`。
 
-```text
-reiinoki.dpdns.org/md-atlas
-reiinoki.dpdns.org/md-atlas/*
-```
-
-不要添加 `/md-atlas*`、整站 Route 或整个主机名的 Custom Domain，也不要修改主站 DNS 目标。
+不要把主站 `reiinoki.dpdns.org` 绑定给 MD Atlas，也不要修改主站 DNS 目标。
 本地构建和 dry-run 不证明云端名称、授权或路由已同步。
 
 ### 4. 同步入口重定向，验收后再处理旧入口
 
-按[子路径部署指南](DEPLOY_SUBPATH.md)为新 `/md-atlas` 配置补斜杠 Redirect Rule，保留查询参数。
-如果编辑原有规则，**匹配路径和跳转目标都要同步修改**，不能只改一边。
+按[部署指南](DEPLOY_SUBPATH.md)发布到独立子域名根路径，不需要 `/md-atlas` 补斜杠规则。
 
-先验证新 Worker 默认域名的 `/md-atlas/`，再验证正式域名的新入口、JSON、地图 Worker、署名页和原主站。
+先验证新 Worker 默认域名的 `/`，再验证正式域名的新入口、JSON、地图 Worker、署名页和原主站。
 不要仅凭 GitHub CI 通过认定 Cloudflare 发布成功。
 
 旧 Worker 不会因为本地名称改变而自动退役。本指南默认先保留旧服务，避免已有链接立即失效。
@@ -102,4 +96,4 @@ reiinoki.dpdns.org/md-atlas/*
 
 - [GitHub：重命名仓库](https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository)
 - [Cloudflare Workers Builds 配置](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
-- [子路径部署与精确重定向](DEPLOY_SUBPATH.md)
+- [独立子域名根路径部署](DEPLOY_SUBPATH.md)
