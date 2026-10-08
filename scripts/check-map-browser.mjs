@@ -399,7 +399,11 @@ try {
   await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
   await view(2);
   await waitFor(() => visible(".event-row"), "archive");
-  assert.ok(await evaluate("document.querySelector('.archive-tools strong').textContent.includes('795')"));
+  // Derive the expected total from the published data: the archive view lists
+  // Mission Day events plus the archive-only official mission sets, so a
+  // hardcoded number breaks every time the archive grows.
+  const archiveEventCount = String(events.length + officialEvents.length);
+  assert.ok(await evaluate(`document.querySelector('.archive-tools strong').textContent.replace(/\\D/g, '').includes(${JSON.stringify(archiveEventCount)})`));
   assert.ok(await evaluate(`document.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)})`));
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
