@@ -196,6 +196,18 @@ async function click(selector) {
 }
 const view = (index) => click(`.intel-tabs button:nth-child(${index})`);
 const visible = (selector) => evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
+// Drive the calendar period through its native selects, one control at a time,
+// because the month control resolves against the currently active year.
+async function setCalendarPeriod(year, month) {
+  for (const [index, value] of [[0, String(year)], [1, String(month)]]) {
+    await evaluate(`(() => {
+      const select = document.querySelectorAll('.calendar-period-control select')[${index}];
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify(value)});
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await waitFor(() => evaluate(`document.querySelectorAll('.calendar-period-control select')[${index}].value === ${JSON.stringify(value)}`), 'calendar period select');
+  }
+}
 try {
   await waitFor(() => existsSync(join(profile, "DevToolsActivePort")), "Chrome startup");
   const debugPort = (await readFile(join(profile, "DevToolsActivePort"), "utf8")).split(/\r?\n/)[0];
@@ -620,7 +632,10 @@ try {
   assert.equal(await visible(".calendar-days"), false, "Incomplete calendar data must stay hidden");
   await click('.view-loading button');
   await waitFor(() => visible(".calendar-days"), "calendar data retry");
-  assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`));
+  // The calendar opens on the nearest upcoming activity, so navigate to the
+  // newest event's month explicitly before checking its localized marker.
+  await setCalendarPeriod(firstEvent.year, Number(firstEvent.date.slice(5, 7)) - 1);
+  assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`), "Localized calendar marker for the newest event");
   assert.equal(await evaluate("document.querySelectorAll('.calendar-type-control button').length"), 3);
   await click(".calendar-type-control button:nth-child(3)");
   await waitFor(() => visible(".calendar-xma-series"), "XM Anomaly series agenda");
@@ -986,16 +1001,6 @@ try {
   const calendarPeriod = () => evaluate("[...document.querySelectorAll('.calendar-period-control select')].map(select => select.value)");
   const calendarYears = await evaluate("[...document.querySelector('.calendar-period-control select').options].map(option => option.value)");
   assert.ok(calendarYears.length > 1);
-  async function setCalendarPeriod(year, month) {
-    for (const [index, value] of [[0, year], [1, String(month)]]) {
-      await evaluate(`(() => {
-        const select = document.querySelectorAll('.calendar-period-control select')[${index}];
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify(value)});
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      })()`);
-      await waitFor(() => evaluate(`document.querySelectorAll('.calendar-period-control select')[${index}].value === ${JSON.stringify(value)}`), 'calendar wheel period setup');
-    }
-  }
   await evaluate(`(() => {
     window.__calendarWheelEvents = [];
     document.addEventListener('wheel', (event) => {

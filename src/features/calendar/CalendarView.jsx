@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { useLanguage } from "../../i18n.jsx";
+import { defaultCalendarDate } from "../../domain/calendarDates";
 import { activityLocation } from "./calendarLabels";
 import { CalendarNavigation } from "./CalendarNavigation";
 import { CalendarGrid } from "./CalendarGrid";
@@ -23,9 +24,13 @@ export function CalendarView({ events, xmAnomalies = [] }) {
   const datedEvents = useMemo(() => sourceActivities.filter((event) => event.date && Number.isFinite(event.year)), [sourceActivities]);
   const years = useMemo(() => [...new Set(datedEvents.map((event) => event.year))].sort((a, b) => b - a), [datedEvents]);
   const latestEvent = useMemo(() => [...datedEvents].sort((a, b) => b.date.localeCompare(a.date))[0], [datedEvents]);
-  const [requestedYear, setRequestedYear] = useState(null);
-  const [requestedMonth, setRequestedMonth] = useState(null);
-  const [requestedDate, setRequestedDate] = useState(null);
+  // Entering the calendar targets the next activity that has not started yet;
+  // with nothing upcoming it targets the current date.
+  const today = new Date().toISOString().slice(0, 10);
+  const defaultDate = useMemo(() => defaultCalendarDate(datedEvents, today), [datedEvents, today]);
+  const [requestedYear, setRequestedYear] = useState(() => Number(defaultDate.slice(0, 4)));
+  const [requestedMonth, setRequestedMonth] = useState(() => Number(defaultDate.slice(5, 7)) - 1);
+  const [requestedDate, setRequestedDate] = useState(() => defaultDate);
   const [selectedActivityId, setSelectedActivityId] = useState(null);
   const [wheelDirection, setWheelDirection] = useState(null);
   const wheelLockedRef = useRef(false);
@@ -49,7 +54,12 @@ export function CalendarView({ events, xmAnomalies = [] }) {
     return groups;
   }, [activeMonth, activeYear, datedEvents, language, locale, t]);
   const dates = [...eventsByDate.keys()].sort((a, b) => b.localeCompare(a));
-  const activeDate = eventsByDate.has(requestedDate) ? requestedDate : (dates[0] ?? null);
+  const activeMonthKey = `${activeYear}-${String(activeMonth + 1).padStart(2, "0")}`;
+  // A requested date wins while its month is displayed, so the default landing
+  // date survives even when that particular day has no activity of its own.
+  const activeDate = requestedDate && requestedDate.startsWith(activeMonthKey)
+    ? requestedDate
+    : (dates[0] ?? null);
   const agendaEvents = activeDate ? (eventsByDate.get(activeDate) ?? []) : [];
   const selectedActivity = agendaEvents.find((event) => event.id === selectedActivityId && event.calendarType === "mission-day") ?? null;
   const activeYearIndex = years.indexOf(activeYear);
