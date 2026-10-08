@@ -77,13 +77,13 @@ test("every event has one audited Mission Day type", () => {
     );
     counts[event.missionDayType] = (counts[event.missionDayType] ?? 0) + 1;
   }
-  assert.deepEqual({ ...counts }, { "md-xma": 223, "md-lite": 11, "md-standard": 544 });
+  assert.deepEqual({ ...counts }, { "md-xma": 223, "md-lite": 11, "md-standard": 551 });
 });
 
 test("archive-only official mission sets stay separate from Mission Day data", async () => {
   assert.equal(officialMissions.meta.eventCount, 17);
   assert.equal(officialMissions.meta.missionCount, 136);
-  assert.equal(archive.meta.eventCount, 778);
+  assert.equal(archive.meta.eventCount, 785);
   const missionDayIds = new Set(archive.events.map((event) => event.id));
   const typeCounts = Object.create(null);
   let missionCount = 0;
