@@ -98,6 +98,7 @@ let nextId = 0;
 const pending = new Map();
 const errors = [];
 const consoleMessages = [];
+const browserLogs = [];
 let cancelledInterceptions = 0;
 const failNext = { searchIndex: 0, eventDetail: 0, xmAnomalies: 0 };
 const heldData = new Map();
@@ -216,6 +217,7 @@ try {
       else task.resolve(message.result);
     } else if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails);
     else if (message.method === "Runtime.consoleAPICalled") consoleMessages.push(message.params);
+    else if (message.method === "Log.entryAdded") browserLogs.push(message.params.entry);
     else if (message.method === "Fetch.requestPaused") intercept(message.params).catch((error) => {
       // View changes can cancel an image between requestPaused and our reply.
       // This CDP cancellation is not an application exception; keep all other
@@ -227,6 +229,7 @@ try {
   });
   await send("Page.enable");
   await send("Runtime.enable");
+  await send("Log.enable");
   await send("Fetch.enable", { patterns: [{ urlPattern: "*tiles.openfreemap.org/*" }, { urlPattern: "*api.bannergress.com/*" }, { urlPattern: "*/data/*" }] });
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `
@@ -977,6 +980,96 @@ try {
   await view(3);
   await waitFor(() => visible('.calendar-days'), 'calendar lifecycle baseline');
   const initialCalendarYear = await evaluate("document.querySelector('.calendar-period-control select').value");
+
+  // Real wheel input must be cancellable; listener updates and StrictMode
+  // remounts must not accumulate handlers or leave them on detached panels.
+  const calendarPeriod = () => evaluate("[...document.querySelectorAll('.calendar-period-control select')].map(select => select.value)");
+  const calendarYears = await evaluate("[...document.querySelector('.calendar-period-control select').options].map(option => option.value)");
+  assert.ok(calendarYears.length > 1);
+  async function setCalendarPeriod(year, month) {
+    for (const [index, value] of [[0, year], [1, String(month)]]) {
+      await evaluate(`(() => {
+        const select = document.querySelectorAll('.calendar-period-control select')[${index}];
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, ${JSON.stringify(value)});
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`);
+      await waitFor(() => evaluate(`document.querySelectorAll('.calendar-period-control select')[${index}].value === ${JSON.stringify(value)}`), 'calendar wheel period setup');
+    }
+  }
+  await evaluate(`(() => {
+    window.__calendarWheelEvents = [];
+    document.addEventListener('wheel', (event) => {
+      if (event.target.closest?.('.calendar-panel')) {
+        window.__calendarWheelEvents.push({ cancelled: event.defaultPrevented, trusted: event.isTrusted });
+      }
+    }, { passive: true });
+  })()`);
+  async function calendarWheel(deltaY) {
+    const before = await evaluate('window.__calendarWheelEvents.length');
+    const point = await evaluate(`(() => {
+      const panel = document.querySelector('.calendar-panel');
+      panel.scrollIntoView({ block: 'start' });
+      const rect = panel.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + 40 };
+    })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseWheel', ...point, deltaX: 0, deltaY });
+    await waitFor(() => evaluate(`window.__calendarWheelEvents.length > ${before}`), 'native calendar wheel event');
+    const event = await evaluate('window.__calendarWheelEvents.at(-1)');
+    assert.equal(event.trusted, true, 'CDP must deliver actual browser input');
+    return event.cancelled;
+  }
+  async function wheelListeners(objectId) {
+    const { listeners } = await send('DOMDebugger.getEventListeners', { objectId });
+    return listeners.filter(({ type }) => type === 'wheel');
+  }
+  await setCalendarPeriod(initialCalendarYear, 6);
+  const { result: panelObject } = await send('Runtime.evaluate', { expression: "document.querySelector('.calendar-panel')" });
+  const listeners = await wheelListeners(panelObject.objectId);
+  assert.equal(listeners.length, 1, 'Exactly one wheel listener is attached');
+  assert.equal(listeners[0].passive, false, 'The month gesture can prevent default scrolling');
+  assert.equal(await calendarWheel(5), false, 'Small deltas keep their native behavior');
+  assert.deepEqual(await calendarPeriod(), [initialCalendarYear, '6']);
+  assert.equal(await calendarWheel(-100), true, 'Handled wheel input prevents scrolling');
+  await waitFor(() => evaluate("document.querySelectorAll('.calendar-period-control select')[1].value === '5'"), 'wheel selects previous month');
+  await sleep(350);
+  assert.deepEqual(await evaluate(`(() => {
+    const panel = document.querySelector('.calendar-panel');
+    return Array.from({ length: 3 }, () => {
+      const event = new WheelEvent('wheel', { deltaY: 100, bubbles: true, cancelable: true });
+      panel.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+  })()`), [true, true, true], 'A synchronous burst remains cancelled while locked');
+  await waitFor(() => evaluate("document.querySelectorAll('.calendar-period-control select')[1].value === '6'"), 'one month per burst');
+  await sleep(350);
+  assert.deepEqual(await calendarPeriod(), [initialCalendarYear, '6'], 'The burst must not queue extra month changes');
+  assert.equal(await calendarWheel(100), true);
+  await waitFor(() => evaluate("document.querySelectorAll('.calendar-period-control select')[1].value === '7'"), 'wheel unlocks after 320ms');
+  await sleep(350);
+  await setCalendarPeriod(calendarYears.at(-1), 0);
+  assert.equal(await calendarWheel(-100), false, 'Lower boundary does not consume the wheel');
+  assert.deepEqual(await calendarPeriod(), [calendarYears.at(-1), '0']);
+  await setCalendarPeriod(calendarYears[0], 11);
+  assert.equal(await calendarWheel(100), false, 'Upper boundary does not consume the wheel');
+  assert.deepEqual(await calendarPeriod(), [calendarYears[0], '11']);
+  await setCalendarPeriod(calendarYears[0], 0);
+  assert.equal(await calendarWheel(-100), true);
+  await waitFor(() => evaluate(`document.querySelector('.calendar-period-control select').value === ${JSON.stringify(calendarYears[1])}`), 'wheel crosses the year boundary');
+  assert.deepEqual(await calendarPeriod(), [calendarYears[1], '11']);
+  assert.equal((await wheelListeners(panelObject.objectId)).length, 1, 'Period updates do not duplicate listeners');
+  await view(2); await waitFor(() => visible('.event-row'), 'wheel panel unmounted');
+  assert.equal((await wheelListeners(panelObject.objectId)).length, 0, 'Unmount removes the listener from the old panel');
+  await send('Runtime.releaseObject', { objectId: panelObject.objectId });
+  await view(3); await waitFor(() => visible('.calendar-days'), 'wheel panel remounted');
+  const { result: remountedPanel } = await send('Runtime.evaluate', { expression: "document.querySelector('.calendar-panel')" });
+  const remountedListeners = await wheelListeners(remountedPanel.objectId);
+  assert.equal(remountedListeners.length, 1);
+  assert.equal(remountedListeners[0].passive, false);
+  await send('Runtime.releaseObject', { objectId: remountedPanel.objectId });
+  assert.equal(await evaluate("document.querySelector('.calendar-period-control select').value"), initialCalendarYear);
+  const wheelPassiveWarnings = browserLogs.filter(({ text }) => /preventDefault.*passive|passive.*preventDefault/i.test(text));
+  assert.deepEqual(wheelPassiveWarnings, [], 'Browser must not report passive-listener interventions');
+
   await evaluate(`(() => {
     const year = document.querySelector('.calendar-period-control select');
     Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(year, year.options[year.options.length - 1].value);
@@ -1021,13 +1114,13 @@ try {
   assert.equal(await visible('.event-feed.is-open'), false, 'Fresh phone map stays unobstructed');
   await writeFile(join(artifacts, "results.json"), JSON.stringify({
     result: "pass", mode: workers ? "workers" : dev ? "development" : "production", pageUrl, exceptions: errors, cancelledInterceptions, labelReloadAborts, initialDataRequests,
-    checks: ["map Worker", "rendered multilingual label pixels, rapid selections and label-only tile re-layout", "popup", "localized cities and language menu without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback", "pathname page/resource routing, Unicode filtered deep-link refresh and invalid route/ID normalization", "map A/B/root Back/Forward selection and drawer restoration", "main/official deep links in both completion orders", "new selection supersedes pending boot link", "search replace and country push", "history back/forward", "archive-only state cleanup", "cross-view detail cache", "pagination/feed/calendar lifetimes", "actual map/archive/root render-error isolation"],
+    checks: ["map Worker", "rendered multilingual label pixels, rapid selections and label-only tile re-layout", "popup", "localized cities and language menu without map remount", "marker selection", "zoom controls", "localized legal footer and links", "mobile resize", "four views", "remount", "WebGL2 fallback", "pathname page/resource routing, Unicode filtered deep-link refresh and invalid route/ID normalization", "map A/B/root Back/Forward selection and drawer restoration", "main/official deep links in both completion orders", "new selection supersedes pending boot link", "search replace and country push", "history back/forward", "archive-only state cleanup", "cross-view detail cache", "pagination/feed/calendar lifetimes", "real calendar wheel cancellation, throttling, bounds and listener cleanup", "actual map/archive/root render-error isolation"],
     externalTiles: "synthetic multilingual vector tiles", glyphs: "local browser fonts", images: "blocked",
   }, null, 2));
   console.log(`Browser smoke passed. Artifacts: ${artifacts}`);
 } catch (error) {
   const body = ws?.readyState === WebSocket.OPEN ? await evaluate("document.body.innerText").catch(String) : "";
-  await writeFile(join(artifacts, "errors.json"), JSON.stringify({ message: String(error), errors, consoleMessages, body }, null, 2));
+  await writeFile(join(artifacts, "errors.json"), JSON.stringify({ message: String(error), errors, consoleMessages, browserLogs, body }, null, 2));
   console.error(`Browser smoke failed. Artifacts: ${artifacts}`);
   throw error;
 } finally {

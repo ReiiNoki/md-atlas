@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useLanguage } from "../../i18n.jsx";
 import { calendarActivityMarker } from "../../domain/calendarActivities";
 import { isoDate, monthCells } from "../../domain/calendarDates";
@@ -5,10 +6,18 @@ import { activityLocation } from "./calendarLabels";
 
 export function CalendarGrid({ months, weekdays, activeYear, activeMonth, eventsByDate, activeDate, monthEventCount, undatedCount, wheelDirection, onWheel, onDate }) {
   const { formatNumber, language, t } = useLanguage();
+  const panelRef = useRef(null);
+  // React delegates wheel events passively. Bind directly so handled month
+  // gestures can prevent scrolling, with the latest handler before paint.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    panel.addEventListener("wheel", onWheel, { passive: false });
+    return () => panel.removeEventListener("wheel", onWheel);
+  }, [onWheel]);
   const today = new Date().toISOString().slice(0, 10);
   return (
     <section className={`calendar-panel ${wheelDirection ? `is-wheel-${wheelDirection}` : ""}`}
-      aria-label={`${months[activeMonth]} ${activeYear}`} onWheel={onWheel}>
+      ref={panelRef} aria-label={`${months[activeMonth]} ${activeYear}`}>
       <header className="calendar-panel__heading">
         <div><span>{activeYear}</span><h2>{months[activeMonth]}</h2></div>
         <span className="calendar-panel__meta">
