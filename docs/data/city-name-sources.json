@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-10",
+  "checkedAt": "2026-10-08",
   "columns": [
     "countryCode",
     "sourceCity",
@@ -928,6 +928,18 @@
       ],
       [
         "Xiamen"
+      ],
+      null
+    ],
+    [
+      "CN",
+      "Zhuhai",
+      "珠海市",
+      [
+        1790437
+      ],
+      [
+        "Zhuhai"
       ],
       null
     ],
@@ -3749,6 +3761,18 @@
     ],
     [
       "MY",
+      "Putrajaya",
+      "布城",
+      [
+        6697380
+      ],
+      [
+        "Putrajaya"
+      ],
+      null
+    ],
+    [
+      "MY",
       "Shah Alam",
       "莎阿南",
       [
@@ -4326,6 +4350,18 @@
       null
     ],
     [
+      "RS",
+      "Novi Sad",
+      "诺维萨德",
+      [
+        3194360
+      ],
+      [
+        "Novi Sad"
+      ],
+      null
+    ],
+    [
       "RU",
       "Kaliningrad",
       "加里宁格勒",
@@ -4502,6 +4538,18 @@
       ],
       [
         "Chiang Mai"
+      ],
+      null
+    ],
+    [
+      "TH",
+      "Khon Kaen",
+      "孔敬",
+      [
+        1609776
+      ],
+      [
+        "Khon Kaen"
       ],
       null
     ],
@@ -4832,6 +4880,18 @@
       ],
       [
         "Austin, Texas"
+      ],
+      null
+    ],
+    [
+      "US",
+      "Bellevue",
+      "贝尔维尤",
+      [
+        5786882
+      ],
+      [
+        "Bellevue, Washington"
       ],
       null
     ],

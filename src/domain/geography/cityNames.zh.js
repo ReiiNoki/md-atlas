@@ -106,6 +106,7 @@ export const CITY_NAMES_ZH = {
     "Suzhou": ["苏州市", "苏州"],
     "Wuxi": ["无锡市", "无锡"],
     "Xiamen": ["厦门市"],
+    "Zhuhai": ["珠海市", "珠海"],
   },
   "CO": {
     "Armenia": ["亚美尼亚城"],
@@ -418,6 +419,7 @@ export const CITY_NAMES_ZH = {
     "Kuching": ["古晋", "古晉"],
     "Malacca": ["马六甲市", "马六甲"],
     "Petaling Jaya": ["八打灵再也"],
+    "Putrajaya": ["布城", "布特拉再也"],
     "Shah Alam": ["莎阿南"],
   },
   "NL": {
@@ -491,6 +493,7 @@ export const CITY_NAMES_ZH = {
   "RS": {
     "Belgrade": ["贝尔格莱德"],
     "Niš": ["尼什"],
+    "Novi Sad": ["诺维萨德", "諾維薩德"],
   },
   "RU": {
     "Kaliningrad": ["加里宁格勒", "加里寧格勒"],
@@ -518,6 +521,7 @@ export const CITY_NAMES_ZH = {
   "TH": {
     "Bangkok": ["曼谷"],
     "Chiang Mai": ["清迈", "清邁"],
+    "Khon Kaen": ["孔敬", "孔敬市"],
   },
   "TR": {
     "İstanbul": ["伊斯坦堡", "伊斯坦布尔"],
@@ -557,6 +561,7 @@ export const CITY_NAMES_ZH = {
     "Atlanta": ["亚特兰大"],
     "Augusta": ["奥古斯塔"],
     "Austin": ["奥斯汀", "奧斯汀"],
+    "Bellevue": ["贝尔维尤", "貝爾維尤"],
     "Bentonville": ["本顿维", "本頓維"],
     "Berkeley": ["伯克利"],
     "Birmingham": ["伯明翰"],
