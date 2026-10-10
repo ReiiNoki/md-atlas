@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultCalendarDate, isoDate, monthCells } from "../src/domain/calendarDates.js";
+import { defaultCalendarDate, nearestUpcomingEvent, isoDate, monthCells } from "../src/domain/calendarDates.js";
 
 test("calendar cells start on Monday, include leap days and complete weeks", () => {
   const leap = monthCells(2024, 1);
@@ -15,6 +15,18 @@ test("calendar cells start on Monday, include leap days and complete weeks", () 
 test("calendar ISO dates keep UTC-friendly padding and month indexing", () => {
   assert.equal(isoDate(2024, 0, 1), "2024-01-01");
   assert.equal(isoDate(2024, 11, 31), "2024-12-31");
+});
+
+test("nearest upcoming activity ignores undated/past events and keeps same-day ties stable", () => {
+  const later = { id: "later", date: "2026-12-06" };
+  const next = { id: "next", date: "2026-11-07" };
+  const tied = { id: "tied", date: "2026-11-07" };
+  const events = [later, { date: null }, { date: "2026-09-19" }, {}, next, tied];
+  assert.strictEqual(nearestUpcomingEvent(events, "2026-10-08"), next);
+  assert.strictEqual(nearestUpcomingEvent(events, "2026-11-07"), next);
+  assert.equal(nearestUpcomingEvent(events, "2026-12-07"), undefined);
+  assert.equal(nearestUpcomingEvent([], "2026-10-08"), undefined);
+  assert.deepEqual(events.map(({ id }) => id), ["later", undefined, undefined, undefined, "next", "tied"]);
 });
 
 test("calendar opens on the nearest upcoming activity or the current date", () => {

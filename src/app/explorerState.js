@@ -1,4 +1,5 @@
-import { INITIAL_FILTERS } from "../domain/archive.js";
+import { INITIAL_FILTERS, isFiniteCoordinate } from "../domain/archive.js";
+import { nearestUpcomingEvent } from "../domain/calendarDates.js";
 import { OFFICIAL_MISSION_TYPES } from "../domain/activityTypes.js";
 import { parseUrlState, serializeUrlState } from "../utils/urlState.js";
 
@@ -59,13 +60,17 @@ export function resolveExplorerSelection(state, archive, officialArchive) {
     invalid: ready && Boolean(state.event) && !exists };
 }
 
-// Preserve the existing boot fallback (first main-archive item), even when
-// URL filters hide it. After filtering/reset/history, default to the first
-// filtered result instead. This provenance is not an explicit event ID.
-export function resolveExplorerEvent(state, selectedId, source, filtered, archive) {
+// Map defaults target the nearest upcoming visible point, without writing a
+// selection to the URL. Other views retain their boot/interaction fallbacks.
+export function resolveExplorerEvent(state, selectedId, source, filtered, archive, today) {
   // A pending/invalid explicit route must not show or fetch the fallback's
   // detail while its own datasets are still being validated.
   if (state.event) return source.find(({ id }) => id === selectedId);
+  if (state.view === "map") {
+    const points = filtered.filter(({ lat, lng }) =>
+      isFiniteCoordinate(lat, 90) && isFiniteCoordinate(lng, 180));
+    return nearestUpcomingEvent(points, today) ?? filtered[0];
+  }
   return state.defaultScope === "archive" ? archive?.events[0] : filtered[0];
 }
 

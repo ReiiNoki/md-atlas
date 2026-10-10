@@ -46,6 +46,16 @@ const port = await new Promise((resolve, reject) => {
 });
 const { events } = JSON.parse(await readFile(resolve(root, "public/data/archive.json"), "utf8"));
 const firstEvent = events[0];
+const today = new Date().toISOString().slice(0, 10);
+const upcomingMapEvent = events
+  .filter(({ date, lat, lng }) => typeof date === "string" && date >= today &&
+    Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lng) && Math.abs(lng) <= 180)
+  .sort((a, b) => a.date.localeCompare(b.date))[0];
+const defaultMapEvent = upcomingMapEvent ?? firstEvent;
+const recentMapEvents = events
+  .filter(({ date, endDate }) => typeof date === "string" && date < today && (endDate ?? date) < today)
+  .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2);
+assert.equal(recentMapEvents.length, 2, "Expected two past MD fixtures");
 const firstMissionRow = events.findIndex(e => e.missionCount > 0);
 const firstMissionEvent = events[firstMissionRow];
 const { events: officialEvents } = JSON.parse(await readFile(resolve(root, "public/data/official-missions.json"), "utf8"));
@@ -58,7 +68,7 @@ const oldestEvent = events.filter((event) => event.date).sort((a, b) => a.date.l
 const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
 assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
 const longCjkMarkerZh = displayCityName(longCjkMarkerEvent.countryCode, longCjkMarkerEvent.city, "zh");
-const firstLocationZh = eventMapLocation(firstEvent, "zh");
+const defaultMapLocationZh = eventMapLocation(defaultMapEvent, "zh");
 const missionLocationZh = eventMapLocation(firstMissionEvent, "zh");
 const workerPreview = workers ? await startWorkersPreview(artifacts) : null;
 const origin = workerPreview?.origin ?? `http://127.0.0.1:${port}`;
@@ -281,6 +291,11 @@ try {
     assert.ok(initialDataRequests.every((path) => path === `${BASE_PATH}data/archive.json`));
   } else assert.deepEqual(initialDataRequests, [`${BASE_PATH}data/archive.json`], "Initial map loads only the archive JSON");
   await sleep(1200); // Wait for the initial flyTo animation before hit testing.
+  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), defaultMapEvent.title,
+    "Initial map highlights the nearest upcoming activity rather than the latest one");
+  assert.equal(await evaluate("document.querySelector('.selection-strip time').textContent"), defaultMapEvent.date);
+  assert.equal(await evaluate("location.pathname"), BASE_PATH, "Default highlight is not a resource selection");
+  assert.equal(await visible('.detail-panel.is-open'), false, "Default highlight does not open the drawer");
 
   // This crop excludes translated DOM overlays, controls and the popup. A
   // changed fingerprint therefore comes from the actual WebGL map, not UI text.
@@ -333,6 +348,10 @@ try {
   const labelReloadAborts = await evaluate("window.__mapReloads.aborted");
 
   assert.ok(await visible(".event-feed.is-open"), "Event feed starts open");
+  assert.deepEqual(await evaluate("[...document.querySelectorAll('.event-feed__rows > button')].map(button => button.dataset.eventId)"),
+    recentMapEvents.map(({ id }) => id), "Feed history lists exactly the latest two past MDs");
+  assert.equal(await evaluate("document.querySelector('.event-feed__upcoming-card')?.dataset.eventId"), upcomingMapEvent?.id,
+    "Feed pins just the nearest upcoming MD above the history");
   assert.equal(await visible(".map-activity-button"), false, "Activity button stays hidden while feed is open");
   await click(".event-feed__close");
   await waitFor(() => visible(".map-activity-button"), "map activity button");
@@ -340,6 +359,8 @@ try {
   await click(".map-activity-button");
   await waitFor(() => visible(".event-feed.is-open"), "reopened event feed");
   assert.equal(await visible(".map-activity-button"), false, "Reopening feed hides activity button");
+  const feedDesktopScreenshot = await send('Page.captureScreenshot');
+  await writeFile(join(artifacts, 'feed-desktop.png'), Buffer.from(feedDesktopScreenshot.data, 'base64'));
 
   const point = await evaluate(`(() => {
     const r = document.querySelector('.mission-map canvas').getBoundingClientRect();
@@ -347,12 +368,13 @@ try {
   })()`);
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", ...point });
   await waitFor(() => visible(".mission-map-popup__body"), "marker popup");
-  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.title);
-  assert.ok(await evaluate(`document.querySelector('.mission-map-popup__body span').textContent.includes(${JSON.stringify(firstLocationZh)})`));
-  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), firstEvent.title);
+  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), defaultMapEvent.title,
+    "Map center and highlighted marker must be the nearest upcoming activity");
+  assert.ok(await evaluate(`document.querySelector('.mission-map-popup__body span').textContent.includes(${JSON.stringify(defaultMapLocationZh)})`));
+  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), defaultMapEvent.title);
   await evaluate("window.__smokeCanvas = document.querySelector('.mission-map canvas')");
   await selectLanguage("en");
-  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), firstEvent.title);
+  assert.equal(await evaluate("document.querySelector('.mission-map-popup__body strong').textContent"), defaultMapEvent.title);
   assert.ok(await evaluate("window.__smokeCanvas === document.querySelector('.mission-map canvas')"));
   await send("Input.dispatchMouseEvent", { type: "mousePressed", button: "left", clickCount: 1, ...point });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", button: "left", clickCount: 1, ...point });
@@ -368,6 +390,13 @@ try {
   const desktopDetailScreenshot = await send('Page.captureScreenshot');
   await writeFile(join(artifacts, 'detail-desktop.png'), Buffer.from(desktopDetailScreenshot.data, 'base64'));
   await click(".detail-panel__heading button");
+  if (upcomingMapEvent) {
+    await click('.event-feed__upcoming-card');
+    await waitFor(() => evaluate(`document.querySelector('.detail-panel.is-open #event-detail-title')?.textContent === ${JSON.stringify(upcomingMapEvent.title)}`),
+      'pinned upcoming MD opens its detail');
+    assert.equal(await evaluate('location.pathname'), `${BASE_PATH}md/${encodeURIComponent(upcomingMapEvent.id)}`);
+    await click('.detail-panel__heading button');
+  }
   await click(".map-control-dock button:first-child");
   await click(".map-control-dock button:nth-child(2)");
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
@@ -379,11 +408,48 @@ try {
     const nav = document.querySelector('.event-feed nav').getBoundingClientRect();
     const selection = document.querySelector('.selection-strip').getBoundingClientRect();
     const attribution = document.querySelector('.maplibregl-ctrl-attrib').getBoundingClientRect();
-    const visibleRows = [...document.querySelectorAll('.event-feed__rows > button')]
-      .filter((row) => getComputedStyle(row).display !== 'none');
-    return feed.height <= 207 && nav.top >= label.bottom && visibleRows.length === 2 &&
+    const rows = document.querySelector('.event-feed__rows');
+    const upcoming = document.querySelector('.event-feed__upcoming');
+    const recent = document.querySelector('.event-feed__recent');
+    return feed.height <= 261 && Math.abs(nav.top - label.top) <= 1 && rows.children.length === 2 &&
+      rows.scrollHeight <= rows.clientHeight + 1 && upcoming.getBoundingClientRect().bottom <= recent.getBoundingClientRect().top &&
       feed.top - selection.bottom >= 100 && feed.bottom <= attribution.top;
-  })()`), "Mobile event feed uses a compact two-row header and leaves the map visible");
+  })()`), "Compact mobile feed has a single-row header and shows both recent MDs without scrolling");
+  assert.ok(await evaluate(`(() => {
+    const rows = document.querySelector('.event-feed__rows');
+    const pinned = document.querySelector('.event-feed__upcoming');
+    const top = pinned.getBoundingClientRect().top;
+    rows.scrollTop = rows.scrollHeight;
+    const last = rows.lastElementChild.getBoundingClientRect();
+    const viewport = rows.getBoundingClientRect();
+    return pinned.getBoundingClientRect().top === top && last.top >= viewport.top && last.bottom <= viewport.bottom + 1;
+  })()`), "Scrolling past MDs must not move the pinned upcoming section");
+  // Cover the supplied phone-sized viewport and narrower phones in all UI
+  // languages. Both history rows must fit, and the region tabs cannot wrap.
+  for (const [width, height] of [[320, 568], [415, 655]]) {
+    await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    for (const language of ['zh', 'en', 'ja']) {
+      await selectLanguage(language);
+      assert.ok(await evaluate(`(() => {
+        const feed = document.querySelector('.event-feed').getBoundingClientRect();
+        const header = document.querySelector('.event-feed > header').getBoundingClientRect();
+        const nav = document.querySelector('.event-feed nav').getBoundingClientRect();
+        const rows = document.querySelector('.event-feed__rows');
+        const viewport = rows.getBoundingClientRect();
+        const buttons = [...rows.children].map(button => button.getBoundingClientRect());
+        const tabs = [...document.querySelectorAll('.event-feed nav button')].map(button => button.getBoundingClientRect());
+        return feed.left >= 0 && feed.right <= innerWidth && feed.height <= 261 &&
+          nav.top === header.top && tabs.every(tab => tab.top === tabs[0].top && tab.right <= feed.right) &&
+          rows.scrollHeight <= rows.clientHeight + 1 && buttons.every(button =>
+            button.height >= 44 && button.top >= viewport.top && button.bottom <= viewport.bottom + 1);
+      })()`), 'Compact two-row feed fits ' + width + 'px / ' + language);
+    }
+  }
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
+  await selectLanguage('en');
+  await evaluate("document.querySelector('.event-feed__rows').scrollTop = 0");
+  const feedMobileScreenshot = await send('Page.captureScreenshot');
+  await writeFile(join(artifacts, 'feed-mobile.png'), Buffer.from(feedMobileScreenshot.data, 'base64'));
   assert.ok(await visible(".maplibregl-ctrl-attrib"));
   assert.equal(
     await evaluate("getComputedStyle(document.querySelector('.intel-statusbar')).display"),
@@ -817,22 +883,23 @@ try {
   // Selection routes must restore their originating map screen and drawer.
   await send('Page.navigate', { url: pageUrl });
   await waitFor(() => visible('.event-feed__rows button'), 'route history map baseline');
+  assert.equal(await evaluate("document.querySelector('.selection-strip strong').textContent"), defaultMapEvent.title);
   const expectSelection = (event) => waitFor(() => evaluate(`
     location.pathname === ${JSON.stringify(`${BASE_PATH}md/${encodeURIComponent(event.id)}`)} &&
     document.querySelector('.intel-workspace--map .detail-panel.is-open #event-detail-title')?.textContent === ${JSON.stringify(event.title)}
   `), `selected route ${event.id}`);
   await click('.event-feed__rows button:first-child');
-  await expectSelection(firstEvent);
+  await expectSelection(recentMapEvents[0]);
   await click('.event-feed__rows button:nth-child(2)');
-  await expectSelection(events[1]);
+  await expectSelection(recentMapEvents[1]);
   await evaluate('history.back()');
-  await expectSelection(firstEvent);
+  await expectSelection(recentMapEvents[0]);
   await evaluate('history.back()');
   await waitFor(() => evaluate(`location.pathname === '${BASE_PATH}' && !document.querySelector('.detail-panel.is-open')`), 'Back to root closes resource drawer');
   await evaluate('history.forward()');
-  await expectSelection(firstEvent);
+  await expectSelection(recentMapEvents[0]);
   await evaluate('history.forward()');
-  await expectSelection(events[1]);
+  await expectSelection(recentMapEvents[1]);
 
   // Primary navigation must leave the selection route, even with an open drawer.
   for (const [index, path, selector] of [[2, 'archive', '.event-row'], [3, 'calendar', '.calendar-days'], [4, 'data', '.data-dashboard']]) {
@@ -865,6 +932,9 @@ try {
   assert.equal(await visible('.detail-panel.is-open'), true, 'Resource navigation opens details');
   await send('Page.reload', { ignoreCache: true });
   await waitFor(() => visible('.mission-row'), 'resource refresh restores detail loading');
+  // Detail and supplemental archive requests finish independently, especially
+  // under StrictMode; wait for the table too before clicking its row.
+  await waitFor(() => visible(`.event-row:nth-child(${firstMissionRow + 1})`), 'archive table ready after resource refresh');
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible('.mission-row'), "archive detail before calendar reuse");
   const detailRequestsBeforeCalendar = await evaluate(`performance.getEntriesByType('resource').filter(({name}) => name.endsWith(${JSON.stringify(firstMissionEvent.detailPath)})).length`);
@@ -954,7 +1024,7 @@ try {
   await view(1);
   await waitFor(() => visible('.event-feed__rows button'), 'map during official load');
   await click('.event-feed__rows button');
-  await waitFor(() => evaluate(`location.pathname === ${JSON.stringify(`${BASE_PATH}md/${encodeURIComponent(firstEvent.id)}`)}`), 'new explicit map choice');
+  await waitFor(() => evaluate(`location.pathname === ${JSON.stringify(`${BASE_PATH}md/${encodeURIComponent(recentMapEvents[0].id)}`)}`), 'new explicit map choice');
   await view(2);
   officialGate.release();
   await waitFor(() => evaluate(`document.querySelector('.intel-workspace--archive #event-detail-title')?.textContent === ${JSON.stringify(firstEvent.title)}`), 'late official payload cannot override user choice');
@@ -983,6 +1053,15 @@ try {
   await waitFor(() => visible('.event-feed'), 'map feed owner');
   await click('.map-activity-button');
   await evaluate("[...document.querySelectorAll('.event-feed nav button')].find(button => button.textContent.trim() === 'APAC').click()");
+  const apacRecent = events.filter(({ region, date, endDate }) => region === 'APAC' &&
+    typeof date === 'string' && date < today && (endDate ?? date) < today)
+    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2);
+  const apacUpcoming = events.filter(({ region, date }) => region === 'APAC' && typeof date === 'string' && date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  assert.deepEqual(await evaluate("[...document.querySelectorAll('.event-feed__rows > button')].map(button => button.dataset.eventId)"),
+    apacRecent.map(({ id }) => id), "Region tabs filter past MDs");
+  assert.equal(await evaluate("document.querySelector('.event-feed__upcoming-card')?.dataset.eventId"), apacUpcoming?.id,
+    "Region tabs also filter the pinned upcoming MD");
   await view(2);
   await waitFor(() => evaluate("document.querySelectorAll('.event-row').length === 120"), 'pagination survives view switch');
   await click('.intel-filter-button');

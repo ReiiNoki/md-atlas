@@ -7,8 +7,9 @@ import { translate } from "../src/i18n/messages.js";
 import { initialMapFeedOpen } from "../src/features/map/feedState.js";
 import { loadJsxModules } from "./helpers/load-jsx.mjs";
 
-const [renderer, footerView, tableView] = await loadJsxModules(
+const [renderer, footerView, tableView, feedView] = await loadJsxModules(
   "/tests-js/helpers/render-jsx.jsx", "/src/components/ArchiveStatusBar.jsx", "/src/features/archive/EventTable.jsx",
+  "/src/components/EventFeed.jsx",
 );
 
 test("filter indicators omit defaults and whitespace-only searches", () => {
@@ -78,6 +79,29 @@ test("archive table places recorded completions after the event date", () => {
   assert.doesNotMatch(archiveStyles, /event-row__count::after/);
 });
 
+test("activity feed renders a pinned upcoming MD and two past MDs with honest empty states", () => {
+  const events = [
+    { id: "future", date: "2999-01-01", city: "Zhuhai", country: "China", countryCode: "CN", missionDayType: "md-standard", status: "scheduled", missionCount: null },
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `past-${index}`, date: `2000-01-0${index + 1}`, city: "Tokyo", country: "Japan", countryCode: "JP", missionDayType: "md-standard", status: "online", missionCount: 18 })),
+  ];
+  const props = { events, region: "all", open: true };
+  const feed = renderer.renderLocalized(feedView.EventFeed, props);
+  assert.match(feed, /event-feed__upcoming-card[^>]*data-event-id="future"/);
+  assert.ok(feed.indexOf('data-event-id="future"') < feed.indexOf('data-event-id="past-4"'));
+  assert.equal((feed.match(/data-event-id="past-/g) ?? []).length, 2);
+  assert.doesNotMatch(feed, /data-event-id="past-[012]"/);
+  assert.match(feed, /珠海市/);
+  assert.ok(feed.includes(translate("zh", "unknownMissionCount")));
+  for (const key of ["nextMissionDay", "recentMissionDays", "noUpcomingMissionDay", "noRecentMissionDay"]) {
+    for (const language of ["zh", "en", "ja"]) assert.notEqual(translate(language, key), key);
+  }
+  const empty = renderer.renderLocalized(feedView.EventFeed, { ...props, events: [], open: false });
+  assert.ok(empty.includes(translate("zh", "noUpcomingMissionDay")));
+  assert.ok(empty.includes(translate("zh", "noRecentMissionDay")));
+  assert.match(empty, /aria-hidden="true"/);
+  assert.doesNotMatch(empty, /data-event-id=/);
+});
+
 test("mobile map starts unobstructed and keeps compact overlays available", () => {
   const responsive = readFileSync(new URL("../src/styles/responsive.css", import.meta.url), "utf8");
   const map = readFileSync(new URL("../src/styles/views/map.css", import.meta.url), "utf8");
@@ -89,7 +113,9 @@ test("mobile map starts unobstructed and keeps compact overlays available", () =
   assert.equal(initialMapFeedOpen(undefined), true);
   assert.match(responsive, /\.intel-shell--map \.intel-statusbar \{ display: none; \}/);
   assert.match(responsive, /\.intel-search \{ position: absolute;/);
-  assert.match(map, /\.event-feed__rows > button:nth-child\(n \+ 3\) \{ display: none; \}/);
+  assert.doesNotMatch(map, /\.event-feed__rows > button:nth-child\(n \+ 3\) \{ display: none; \}/);
+  assert.match(map, /\.event-feed__rows \{ overflow: auto; overscroll-behavior: contain; \}/);
+  assert.match(map, /\.event-feed__upcoming \{ flex-shrink: 0;/);
 });
 
 const tokens = readFileSync(new URL("../src/styles/tokens.css", import.meta.url), "utf8");

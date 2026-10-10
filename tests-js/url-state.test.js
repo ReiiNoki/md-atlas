@@ -146,6 +146,36 @@ test("boot and interaction fallbacks preserve scope without writing an implicit 
   assert.strictEqual(resolveExplorerEvent(explicit, explicit.event, archive.events, [filtered], archive), first);
 });
 
+test("map defaults to the nearest upcoming visible point without making it a URL selection", () => {
+  const later = { id: "later", date: "2026-12-06", lat: 23, lng: 113 };
+  const next = { id: "next", date: "2026-11-07", lat: 22, lng: 113 };
+  const past = { id: "past", date: "2026-09-19", lat: 35, lng: 139 };
+  const invalidPoints = [
+    { id: "no-point", date: "2026-10-09" },
+    { id: "nan", date: "2026-10-09", lat: NaN, lng: 113 },
+    { id: "infinity", date: "2026-10-09", lat: 22, lng: Infinity },
+    { id: "out-of-range", date: "2026-10-09", lat: 91, lng: 113 },
+    { id: "bad-longitude", date: "2026-10-09", lat: 22, lng: 181 },
+  ];
+  const archive = { events: [later, past, ...invalidPoints, next] };
+  const boot = initial();
+  const resolve = (state, filtered, today = "2026-10-08") =>
+    resolveExplorerEvent(state, state.event, archive.events, filtered, archive, today);
+  assert.strictEqual(resolve(boot, archive.events), next);
+  assert.strictEqual(resolve(boot, archive.events, "2026-11-07"), next);
+  assert.deepEqual(serializeUrlState(boot), location());
+  const filteredState = explorerReducer(boot, { type: "filter", key: "country", value: "JP" });
+  assert.strictEqual(resolve(filteredState, [later]), later, "honors filters instead of selecting a hidden upcoming point");
+  assert.strictEqual(resolve(filteredState, [past]), past, "no upcoming event keeps the first result fallback");
+  assert.equal(resolve(filteredState, []), undefined, "no results means no highlighted point");
+  const explicit = explorerReducer(boot, { type: "select", id: past.id });
+  assert.strictEqual(resolve(explicit, [next]), past, "explicit selection wins, even outside filters");
+  const invalid = explorerReducer(boot, { type: "select", id: "missing" });
+  assert.equal(resolve(invalid, archive.events), undefined, "pending/invalid routes do not display a fallback");
+  const reentered = explorerReducer(initial("calendar"), { type: "view", view: "map" });
+  assert.strictEqual(resolve(reentered, archive.events), next, "returning to map uses the same default");
+});
+
 test("view changes leave resource paths and clear only archive-specific filters", () => {
   const official = [{ id: "official-id" }];
   for (const [id, type] of [["md-id", "goruck"], ["official-id", "all"]]) {
