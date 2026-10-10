@@ -23,6 +23,8 @@
   .mission-image { position: relative; display: block; overflow: hidden; background: var(--color-surface-raised); }
   .mission-image img { display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 160ms ease; }
   .mission-image.is-loaded img { opacity: 1; }
+  .mission-image--placeholder { display: flex; align-items: center; justify-content: center; }
+  .mission-image--placeholder img { width: 80%; height: 80%; max-width: 144px; max-height: 144px; object-fit: contain; opacity: 1; }
   .mission-image__loading {
     position: absolute; inset: 0; display: grid; place-items: center; padding: 8px;
     color: var(--color-text-muted); font-size: 11px; text-align: center;

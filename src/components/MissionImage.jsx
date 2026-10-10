@@ -14,9 +14,16 @@ export function MissionImage({ event, className = "", eager = false, retryable =
 
   if (!event.picture) {
     return (
-      <span className={`mission-image mission-image--fallback ${className}`} aria-label={label}>
-        <ImageOff size={20} strokeWidth={1.25} />
-        <small>{t("noImage")}</small>
+      <span className={`mission-image mission-image--placeholder ${className}`}>
+        <img
+          src={`${import.meta.env.BASE_URL}event-placeholder.webp`}
+          alt={t("eventImagePlaceholder", { city: displayCityName(event.countryCode, event.city, language) })}
+          title={t("noImage")}
+          loading={eager ? "eager" : "lazy"}
+          width="256"
+          height="256"
+          decoding="async"
+        />
       </span>
     );
   }

@@ -111,6 +111,7 @@ const consoleMessages = [];
 const browserLogs = [];
 let cancelledInterceptions = 0;
 const failNext = { searchIndex: 0, eventDetail: 0, xmAnomalies: 0 };
+const bannerImageAttempts = new Map();
 const heldData = new Map();
 let corruptDetail = false;
 let corruptArchive = null;
@@ -188,6 +189,7 @@ async function intercept({ requestId, request }) {
     await send("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" });
     throw new Error("Map labels must not depend on remote font ranges");
   } else if (request.url.includes("api.bannergress.com")) {
+    bannerImageAttempts.set(request.url, (bannerImageAttempts.get(request.url) ?? 0) + 1);
     await send("Fetch.failRequest", { requestId, errorReason: "Aborted" });
     return;
   }
@@ -379,6 +381,20 @@ try {
   await send("Input.dispatchMouseEvent", { type: "mousePressed", button: "left", clickCount: 1, ...point });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", button: "left", clickCount: 1, ...point });
   await waitFor(() => visible(".detail-panel.is-open"), "marker selection");
+  if (!defaultMapEvent.picture) {
+    await waitFor(() => evaluate(`(() => {
+      const image = document.querySelector('.detail-art .mission-image--placeholder img');
+      if (!image?.complete || image.naturalWidth !== 256 || image.naturalHeight !== 256) return false;
+      const rect = image.getBoundingClientRect();
+      const container = image.parentElement.getBoundingClientRect();
+      const style = getComputedStyle(image);
+      return style.opacity === '1' && style.objectFit === 'contain' && rect.width <= 144 && rect.height <= 144 &&
+        Math.abs((rect.left + rect.right) - (container.left + container.right)) < 2 &&
+        Math.abs((rect.top + rect.bottom) - (container.top + container.bottom)) < 2;
+    })()`), 'legacy placeholder loads centered at a bounded size in event details');
+    assert.equal(await evaluate("new URL(document.querySelector('.detail-art .mission-image--placeholder img').src).pathname"),
+      `${BASE_PATH}event-placeholder.webp`);
+  }
   assert.ok(await evaluate(`(() => {
     const h = document.querySelector('.intel-workspace--map .detail-panel__heading');
     const r = h.getBoundingClientRect();
@@ -480,6 +496,22 @@ try {
   await writeFile(join(artifacts, "map-mobile.png"), Buffer.from(screenshot.data, "base64"));
   await view(2);
   await waitFor(() => visible(".event-row"), "archive");
+  await waitFor(() => evaluate(`(() => {
+    const image = document.querySelector('.event-row__image.mission-image--placeholder img');
+    return image?.complete && image.naturalWidth > 0 && getComputedStyle(image).opacity === '1';
+  })()`), 'archive thumbnails render the local placeholder instead of no-image text');
+  assert.equal(await evaluate("new URL(document.querySelector('.event-row__image.mission-image--placeholder img').src).pathname"),
+    `${BASE_PATH}event-placeholder.webp`);
+  assert.ok(await evaluate(`(() => {
+    const placeholder = document.querySelector('.event-row__image.mission-image--placeholder');
+    const image = placeholder.querySelector('img');
+    const rect = image.getBoundingClientRect();
+    const container = placeholder.getBoundingClientRect();
+    return !placeholder.textContent.trim() && Boolean(image.alt) && getComputedStyle(image).objectFit === 'contain' &&
+      rect.width < container.width && rect.height < container.height &&
+      Math.abs((rect.left + rect.right) - (container.left + container.right)) < 2 &&
+      Math.abs((rect.top + rect.bottom) - (container.top + container.bottom)) < 2;
+  })()`), 'legacy thumbnail preserves padding, centers the icon and keeps an accessible placeholder label');
   // Derive the expected total from the published data: the archive view lists
   // Mission Day events plus the archive-only official mission sets, so a
   // hardcoded number breaks every time the archive grows.
@@ -587,6 +619,12 @@ try {
   ));
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
+  await waitFor(() => visible('.detail-art .mission-image--fallback button'), 'failed banner retains its image retry control');
+  assert.equal(await visible('.detail-art .mission-image--placeholder'), false, 'Network errors must not masquerade as missing banners');
+  const imageAttemptsBeforeRetry = bannerImageAttempts.get(firstMissionEvent.picture) ?? 0;
+  await click('.detail-art .mission-image--fallback button');
+  await waitFor(() => (bannerImageAttempts.get(firstMissionEvent.picture) ?? 0) > imageAttemptsBeforeRetry, 'image retry re-requests the original banner');
+  await waitFor(() => visible('.detail-art .mission-image--fallback button'), 'failed image retry remains recoverable');
   assert.equal(await evaluate("document.querySelector('#event-detail-title').textContent"), firstMissionEvent.title);
   assert.equal(await evaluate("document.querySelector('.detail-panel__identity p').textContent"), missionLocationZh);
   assert.ok(await evaluate(`(() => {
