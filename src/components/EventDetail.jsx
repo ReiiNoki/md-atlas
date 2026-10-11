@@ -149,7 +149,7 @@ export function EventDetail({
       <div className="detail-art">
         <span className="detail-art__axis detail-art__axis--x" />
         <span className="detail-art__axis detail-art__axis--y" />
-        <MissionImage event={event} eager={open} retryable />
+        <MissionImage event={event} eager={open} retryable placeholderVariant="detail" />
         {event.picture ? (
           <a
             className="detail-art__open"

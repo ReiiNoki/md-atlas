@@ -3,7 +3,12 @@ import { ImageOff, RotateCcw } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
 import { displayCityName } from "../domain/geography/locations";
 
-export function MissionImage({ event, className = "", eager = false, retryable = false }) {
+const PLACEHOLDERS = {
+  thumbnail: { file: "event-placeholder-thumbnail.webp", width: 480, height: 320 },
+  detail: { file: "event-placeholder-detail.webp", width: 660, height: 400 },
+};
+
+export function MissionImage({ event, className = "", eager = false, retryable = false, placeholderVariant = "thumbnail" }) {
   const [failedUrl, setFailedUrl] = useState(null);
   const [loadedUrl, setLoadedUrl] = useState(null);
   const [retryToken, setRetryToken] = useState(0);
@@ -13,15 +18,16 @@ export function MissionImage({ event, className = "", eager = false, retryable =
   const loaded = event.picture === loadedUrl;
 
   if (!event.picture) {
+    const placeholder = placeholderVariant === "detail" ? PLACEHOLDERS.detail : PLACEHOLDERS.thumbnail;
     return (
       <span className={`mission-image mission-image--placeholder ${className}`}>
         <img
-          src={`${import.meta.env.BASE_URL}event-placeholder.webp`}
+          src={`${import.meta.env.BASE_URL}${placeholder.file}`}
           alt={t("eventImagePlaceholder", { city: displayCityName(event.countryCode, event.city, language) })}
           title={t("noImage")}
           loading={eager ? "eager" : "lazy"}
-          width="256"
-          height="256"
+          width={placeholder.width}
+          height={placeholder.height}
           decoding="async"
         />
       </span>

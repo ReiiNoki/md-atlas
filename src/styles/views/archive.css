@@ -33,6 +33,7 @@
   .event-row__completions small, .event-row__count small { display: none; }
   .event-row__rating { display: flex; align-items: center; gap: 5px; color: var(--color-amber); font-family: var(--font-mono); font-size: 12px; }
   .event-row__image { width: 56px; height: 42px; margin-left: 12px; padding: 0 !important; border-radius: 5px; }
+  .event-row__image.mission-image--placeholder { height: auto; aspect-ratio: 3 / 2; }
   .event-row__image .mission-image__loading { font-size: 0; }
   .event-row__image .mission-image__loading::after { width: 24px; height: 3px; border-radius: 999px; content: ""; background: var(--color-divider); }
 

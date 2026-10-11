@@ -44,7 +44,9 @@ try {
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
   }
   await asset(`${BASE_PATH}favicon.svg`, "public/favicon.svg", /image\/svg\+xml/);
-  await asset(`${BASE_PATH}event-placeholder.webp`, "public/event-placeholder.webp", /image\/webp/);
+  for (const variant of ["thumbnail", "detail"]) {
+    await asset(`${BASE_PATH}event-placeholder-${variant}.webp`, `public/event-placeholder-${variant}.webp`, /image\/webp/);
+  }
   const credits = await fetch(`${server.origin}${BASE_PATH}city-name-credits.html`, { redirect: "manual" });
   assert.equal(credits.status, 307);
   const canonical = new URL(credits.headers.get("Location"), server.origin);

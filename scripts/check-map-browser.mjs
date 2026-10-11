@@ -384,16 +384,16 @@ try {
   if (!defaultMapEvent.picture) {
     await waitFor(() => evaluate(`(() => {
       const image = document.querySelector('.detail-art .mission-image--placeholder img');
-      if (!image?.complete || image.naturalWidth !== 256 || image.naturalHeight !== 256) return false;
+      if (!image?.complete || image.naturalWidth !== 660 || image.naturalHeight !== 400) return false;
       const rect = image.getBoundingClientRect();
       const container = image.parentElement.getBoundingClientRect();
       const style = getComputedStyle(image);
-      return style.opacity === '1' && style.objectFit === 'contain' && rect.width <= 144 && rect.height <= 144 &&
-        Math.abs((rect.left + rect.right) - (container.left + container.right)) < 2 &&
-        Math.abs((rect.top + rect.bottom) - (container.top + container.bottom)) < 2;
-    })()`), 'legacy placeholder loads centered at a bounded size in event details');
+      return style.opacity === '1' && style.objectFit === 'contain' && Math.abs(container.width / container.height - 1.65) < .01 &&
+        Math.abs(rect.width - container.width) < 1 && Math.abs(rect.height - container.height) < 1 &&
+        Math.abs(rect.left - container.left) < 1 && Math.abs(rect.top - container.top) < 1;
+    })()`), 'wide detail crop displays at 1.65:1 without stretching or secondary cropping');
     assert.equal(await evaluate("new URL(document.querySelector('.detail-art .mission-image--placeholder img').src).pathname"),
-      `${BASE_PATH}event-placeholder.webp`);
+      `${BASE_PATH}event-placeholder-detail.webp`);
   }
   assert.ok(await evaluate(`(() => {
     const h = document.querySelector('.intel-workspace--map .detail-panel__heading');
@@ -501,17 +501,17 @@ try {
     return image?.complete && image.naturalWidth > 0 && getComputedStyle(image).opacity === '1';
   })()`), 'archive thumbnails render the local placeholder instead of no-image text');
   assert.equal(await evaluate("new URL(document.querySelector('.event-row__image.mission-image--placeholder img').src).pathname"),
-    `${BASE_PATH}event-placeholder.webp`);
+    `${BASE_PATH}event-placeholder-thumbnail.webp`);
   assert.ok(await evaluate(`(() => {
     const placeholder = document.querySelector('.event-row__image.mission-image--placeholder');
     const image = placeholder.querySelector('img');
     const rect = image.getBoundingClientRect();
     const container = placeholder.getBoundingClientRect();
     return !placeholder.textContent.trim() && Boolean(image.alt) && getComputedStyle(image).objectFit === 'contain' &&
-      rect.width < container.width && rect.height < container.height &&
-      Math.abs((rect.left + rect.right) - (container.left + container.right)) < 2 &&
-      Math.abs((rect.top + rect.bottom) - (container.top + container.bottom)) < 2;
-  })()`), 'legacy thumbnail preserves padding, centers the icon and keeps an accessible placeholder label');
+      image.naturalWidth === 480 && image.naturalHeight === 320 && Math.abs(container.width / container.height - 1.5) < .01 &&
+      Math.abs(rect.width - container.width) < 1 && Math.abs(rect.height - container.height) < 1 &&
+      Math.abs(rect.left - container.left) < 1 && Math.abs(rect.top - container.top) < 1;
+  })()`), 'phone thumbnail keeps both subjects with a true 3:2 frame and an accessible label');
   // Derive the expected total from the published data: the archive view lists
   // Mission Day events plus the archive-only official mission sets, so a
   // hardcoded number breaks every time the archive grows.
@@ -520,6 +520,11 @@ try {
   assert.ok(await evaluate(`document.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)})`));
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
+  assert.ok(await evaluate(`(() => {
+    const image = document.querySelector('.event-row__image.mission-image--placeholder img');
+    const frame = image.parentElement.getBoundingClientRect();
+    return Math.abs(frame.width / frame.height - 1.5) < .01 && getComputedStyle(image).objectFit === 'contain';
+  })()`), 'desktop thumbnail also uses the approved 3:2 crop without secondary cropping');
   assert.ok(await evaluate(`(() => {
     const headers = [...document.querySelectorAll('.event-table__header > span')];
     const row = document.querySelector('.event-row');
