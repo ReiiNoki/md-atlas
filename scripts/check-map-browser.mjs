@@ -56,12 +56,22 @@ const recentMapEvents = events
   .filter(({ date, endDate }) => typeof date === "string" && date < today && (endDate ?? date) < today)
   .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2);
 assert.equal(recentMapEvents.length, 2, "Expected two past MD fixtures");
-const firstMissionRow = events.findIndex(e => e.missionCount > 0);
+// An announced total does not imply that mission records exist yet. Choose
+// retry/lifecycle fixtures from their actual published detail payloads.
+const missionRows = [];
+for (const [index, event] of events.entries()) {
+  if (!(event.missionCount > 0)) continue;
+  const detail = JSON.parse(await readFile(resolve(root, "public", event.detailPath), "utf8"));
+  if (!detail.missions.length) continue;
+  missionRows.push(index);
+  if (missionRows.length === 2) break;
+}
+assert.equal(missionRows.length, 2, "Expected two events with real mission details");
+const [firstMissionRow, secondMissionRow] = missionRows;
 const firstMissionEvent = events[firstMissionRow];
 const { events: officialEvents } = JSON.parse(await readFile(resolve(root, "public/data/official-missions.json"), "utf8"));
 const officialEvent = officialEvents[0];
 assert.ok(officialEvent, "Expected an archive-only deep link fixture");
-const secondMissionRow = events.findIndex(e => e.missionCount > 0 && e.id !== firstMissionEvent.id);
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
 const firstEventCompletions = new Intl.NumberFormat("en-US").format(firstEvent.completions);
 const oldestEvent = events.filter((event) => event.date).sort((a, b) => a.date.localeCompare(b.date))[0];

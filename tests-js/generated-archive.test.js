@@ -126,6 +126,25 @@ test("the 2026 Denver banner replaces its placeholder without overwriting the 20
   assert.ok(archive.events.some((event) => event.id === "md-denver-a948" && event.date === "2016-08-28"));
 });
 
+test("2026 Zhuhai and Shanghai retain their confirmed totals before mission details are published", async () => {
+  const analytics = expandAnalytics(analyticsPayload);
+  for (const [id, date] of [["scheduled-md-2026-zhuhai", "2026-11-07"], ["scheduled-md-2026-shanghai", "2026-11-29"]]) {
+    const matches = archive.events.filter((event) => event.id === id);
+    assert.equal(matches.length, 1);
+    const [event] = matches;
+    assert.equal(event.date, date);
+    assert.equal(event.year, 2026);
+    assert.equal(event.status, "scheduled");
+    assert.equal(event.missionCount, 18);
+    const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+    assert.equal(detail.missionCount, 18);
+    assert.deepEqual(detail.missions, []);
+    const statistics = analytics.events.find((event) => event.id === id);
+    assert.equal(statistics.missionCount, 18);
+    assert.deepEqual(statistics.missions, []);
+  }
+});
+
 test("mission search text is deferred to a complete standalone index", () => {
   assert.deepEqual(Object.keys(searchIndex).sort(), archive.events.map(({ id }) => id).sort());
   for (const event of archive.events) {
