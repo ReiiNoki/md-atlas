@@ -7,6 +7,7 @@ import { useLanguage } from "../../i18n.jsx";
 import { displayCityName, displayCountryName } from "../../domain/geography/locations";
 import { sortEventsByDate } from "../../domain/archive";
 import { eventActivityType } from "../../domain/activityTypes";
+import { formatAverageMissionDistance, formatAverageMissionTime } from "../../utils/missionAverages";
 
 export function EventTable({
   events,
@@ -65,6 +66,8 @@ export function EventTable({
         </span>
         <span>{t("completionCount")}</span>
         <span>{t("missionCount")}</span>
+        <span className="event-table__average-distance-heading">{t("averageMissionDistance")}</span>
+        <span className="event-table__average-time-heading">{t("averageMissionTime")}</span>
         <span>{t("averageRating")}</span>
         <span>{t("status")}</span>
       </div>
@@ -95,6 +98,14 @@ export function EventTable({
             <span className="event-row__count">
               {event.missionCount != null ? formatNumber(event.missionCount) : "—"}
               <small>{t("missions")}</small>
+            </span>
+            <span className="event-row__average event-row__average-distance" title={event.missionDistanceSampleCount != null ? t("missionAverageSamples", { count: formatNumber(event.missionDistanceSampleCount) }) : undefined}>
+              <small>{t("averageMissionDistance")}</small>
+              <b>{formatAverageMissionDistance(event.averageMissionDistanceMeters, language)}</b>
+            </span>
+            <span className="event-row__average event-row__average-time" title={event.missionTimeSampleCount != null ? t("missionAverageSamples", { count: formatNumber(event.missionTimeSampleCount) }) : undefined}>
+              <small>{t("averageMissionTime")}</small>
+              <b>{formatAverageMissionTime(event.averageMissionTimeMilliseconds, language)}</b>
             </span>
             <span className="event-row__rating">
               <Star size={13} fill="currentColor" />

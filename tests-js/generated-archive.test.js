@@ -55,6 +55,25 @@ test("every event has its published detail file without depending on maintenance
   assert.equal(missionCount, archive.meta.missionCount);
 });
 
+test("archive list averages match independent valid samples from published details", async () => {
+  for (const event of [...archive.events, ...officialMissions.events]) {
+    const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+    for (const [source, average, count] of [
+      ["distanceMeters", "averageMissionDistanceMeters", "missionDistanceSampleCount"],
+      ["timeMilliseconds", "averageMissionTimeMilliseconds", "missionTimeSampleCount"],
+    ]) {
+      const samples = detail.missions.map((mission) => mission[source]).filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0);
+      assert.equal(event[count], samples.length, `${event.id}: ${count}`);
+      if (!samples.length) assert.equal(event[average], null, `${event.id}: ${average}`);
+      else {
+        const expected = samples.reduce((total, value) => total + value, 0) / samples.length;
+        assert.ok(Number.isFinite(event[average]) && event[average] >= 0);
+        assert.ok(Math.abs(event[average] - expected) <= Math.max(1, expected) * 1e-12, `${event.id}: ${average}`);
+      }
+    }
+  }
+});
+
 test("event summaries expose normalized known statuses", () => {
   const allowedStatuses = new Set(["online", "offline", "partially_offline", "scheduled"]);
   for (const event of archive.events) {

@@ -13,6 +13,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { displayCityName } from "../src/domain/geography/locations.js";
 import { eventMapLocation } from "../src/utils/eventMapLabel.js";
+import { formatAverageMissionDistance, formatAverageMissionTime } from "../src/utils/missionAverages.js";
 import { MAP_LABEL_SOURCE } from "../src/features/map/intelMapStyle.js";
 import { labelTile } from "./map-browser-fixtures.mjs";
 import { BASE_PATH } from "../site.config.js";
@@ -541,7 +542,13 @@ try {
     const date = headers[2].getBoundingClientRect();
     const completions = headers[3].getBoundingClientRect();
     const missions = headers[4].getBoundingClientRect();
-    return headers.length === 7 && date.right <= completions.left && completions.right <= missions.left &&
+    const distance = headers[5].getBoundingClientRect(), time = headers[6].getBoundingClientRect();
+    const rowDistance = row.querySelector('.event-row__average-distance').getBoundingClientRect();
+    const rowTime = row.querySelector('.event-row__average-time').getBoundingClientRect();
+    return headers.length === 9 && date.right <= completions.left && completions.right <= missions.left &&
+      missions.right <= distance.left && distance.right <= time.left &&
+      Math.abs(distance.left - rowDistance.left) < 1 && Math.abs(distance.width - rowDistance.width) < 1 &&
+      Math.abs(time.left - rowTime.left) < 1 && Math.abs(time.width - rowTime.width) < 1 &&
       row.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)}) &&
       document.querySelector('.event-table__body').scrollWidth <= document.querySelector('.event-table__body').clientWidth;
   })()`), "Desktop archive places completion totals between date and mission count");
@@ -632,6 +639,33 @@ try {
   assert.ok(await evaluate(
     "document.querySelector('.intel-statusbar__legal').textContent.includes('数据来源于 Bannergress') && document.querySelector('.intel-statusbar__legal').textContent.includes('XM Anomaly 日程')",
   ));
+  // Averages must be visible in the actual archive list, including narrow screens.
+  const averageRowSelector = `.event-row:nth-child(${firstMissionRow + 1})`;
+  for (const [width, height] of [[1440, 1000], [1024, 768], [390, 844], [320, 568]]) {
+    await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    for (const language of ['zh', 'en', 'ja']) {
+      await selectLanguage(language);
+      await evaluate(`document.querySelector(${JSON.stringify(averageRowSelector)}).scrollIntoView({block:'center'})`);
+      await sleep(100);
+      assert.equal(await evaluate(`document.querySelector(${JSON.stringify(averageRowSelector + ' .event-row__average-distance b')}).textContent`), formatAverageMissionDistance(firstMissionEvent.averageMissionDistanceMeters, language));
+      assert.equal(await evaluate(`document.querySelector(${JSON.stringify(averageRowSelector + ' .event-row__average-time b')}).textContent`), formatAverageMissionTime(firstMissionEvent.averageMissionTimeMilliseconds, language));
+      assert.ok(await evaluate(`(() => {
+        const row = document.querySelector(${JSON.stringify(averageRowSelector)}), bounds = row.getBoundingClientRect();
+        const nodes = [...row.querySelectorAll('.event-row__average, .event-row__average small, .event-row__average b')].filter(node => node.getClientRects().length);
+        const metrics = nodes.map(node => node.getBoundingClientRect());
+        const body = document.querySelector('.event-table__body');
+        return metrics.length >= 4 && metrics.every(r => r.width > 0 && r.height > 0 && r.left >= bounds.left - 1 && r.right <= bounds.right + 1) && body.scrollWidth <= body.clientWidth + 1;
+      })()`), `Average metrics fit the archive row at ${width}px / ${language}`);
+      if (language === 'zh') {
+        const image = await send('Page.captureScreenshot');
+        await writeFile(join(artifacts, `archive-averages-${width}.png`), Buffer.from(image.data, 'base64'));
+      }
+    }
+  }
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
+  await selectLanguage('zh');
+  assert.equal(await evaluate("document.querySelector('.event-row__average-distance b').textContent"), '—');
+  assert.equal(await evaluate("document.querySelector('.event-row__average-time b').textContent"), '—');
   await click(`.event-row:nth-child(${firstMissionRow + 1})`);
   await waitFor(() => visible(".mission-row"), "mission details");
   await waitFor(() => visible('.detail-art .mission-image--fallback button'), 'failed banner retains its image retry control');
