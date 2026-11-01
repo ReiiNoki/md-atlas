@@ -7,7 +7,6 @@
     .intel-search { grid-column: 3; }
     .intel-filter-button { grid-column: 4; }
     .intel-language-picker { grid-column: 5; }
-    .archive-layout:not(.detail-closed) { grid-template-columns: minmax(0, 1fr) 360px; }
   }
   @media (max-width: 760px) {
     :root { --statusbar-height: 110px; }

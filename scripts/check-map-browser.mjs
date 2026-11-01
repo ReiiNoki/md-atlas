@@ -654,12 +654,58 @@ try {
         const nodes = [...row.querySelectorAll('.event-row__average, .event-row__average small, .event-row__average b')].filter(node => node.getClientRects().length);
         const metrics = nodes.map(node => node.getBoundingClientRect());
         const body = document.querySelector('.event-table__body');
-        return metrics.length >= 4 && metrics.every(r => r.width > 0 && r.height > 0 && r.left >= bounds.left - 1 && r.right <= bounds.right + 1) && body.scrollWidth <= body.clientWidth + 1;
+        return metrics.length >= 4 && metrics.every(r => r.width > 0 && r.height > 0 && r.left >= bounds.left - 1 && r.right <= bounds.right + 1 && r.top >= bounds.top - 1 && r.bottom <= bounds.bottom + 1) && body.scrollWidth <= body.clientWidth + 1;
       })()`), `Average metrics fit the archive row at ${width}px / ${language}`);
       if (language === 'zh') {
         const image = await send('Page.captureScreenshot');
         await writeFile(join(artifacts, `archive-averages-${width}.png`), Buffer.from(image.data, 'base64'));
       }
+    }
+  }
+  // Regression: opening a dossier must not turn a desktop table into cards or
+  // clip either average. Exercise both scheduled placeholders and real missions.
+  await selectLanguage('zh');
+  const archiveGeometry = `(selector) => {
+    const row = document.querySelector(selector), table = document.querySelector('.event-table');
+    const rect = row.getBoundingClientRect(), body = document.querySelector('.event-table__body');
+    const metrics = [...row.querySelectorAll('.event-row__average, .event-row__average small, .event-row__average b')].filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect());
+    return { height: rect.height, tableWidth: table.getBoundingClientRect().width, tableRight: table.getBoundingClientRect().right,
+      cityWidth: row.querySelector('.event-row__place').getBoundingClientRect().width,
+      dataWidths: [...row.querySelectorAll(':scope > time, :scope > .event-row__completions, :scope > .event-row__count, :scope > .event-row__average, :scope > .event-row__rating, :scope > .status')].map(node => node.getBoundingClientRect().width),
+      header: getComputedStyle(document.querySelector('.event-table__header')).display,
+      scrollTop: body.scrollTop, fits: body.scrollWidth <= body.clientWidth + 1,
+      metricsFit: metrics.length >= 4 && metrics.every(r => r.left >= rect.left - 1 && r.right <= rect.right + 1 && r.top >= rect.top - 1 && r.bottom <= rect.bottom + 1) };
+  }`;
+  for (const [width, height] of [[1920,1080],[1680,1000],[1600,1000],[1520,1000],[1519,1000],[1440,1000],[1280,900],[1100,768],[1024,768],[980,768],[390,844],[320,568]]) {
+    await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    for (const selector of ['.event-row', averageRowSelector]) {
+      await evaluate(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center'})`);
+      await sleep(100);
+      const before = await evaluate(`(${archiveGeometry})(${JSON.stringify(selector)})`);
+      await click(selector);
+      await waitFor(() => visible('.archive-layout > .detail-panel.is-open'), 'archive drawer opens');
+      await sleep(220);
+      const after = await evaluate(`(${archiveGeometry})(${JSON.stringify(selector)})`);
+      assert.equal(after.header, before.header, `Opening details changes list mode at ${width}px`);
+      assert.ok(Math.abs(after.height - before.height) < 2, `Opening details changes row height at ${width}px: ${JSON.stringify({before,after})}`);
+      assert.ok(after.fits && after.metricsFit, `Drawer squeezes/clips the list at ${width}px: ${JSON.stringify(after)}`);
+      if (width > 760 && width < 1520) {
+        assert.ok(Math.abs(after.tableWidth - before.tableWidth) < 1, `Overlay must not narrow the list at ${width}px`);
+      }
+      if (width >= 1520) {
+        assert.equal(after.header, 'grid', 'Wide split layout must retain all table columns');
+        assert.ok(after.cityWidth <= 300 && after.cityWidth < before.cityWidth - 150, `Open detail should trim city-column whitespace at ${width}px`);
+        assert.ok(after.dataWidths.every((value, index) => Math.abs(value - before.dataWidths[index]) < 1), 'Only the city column may become narrower');
+        assert.ok(await evaluate("document.querySelector('.event-table').getBoundingClientRect().right <= document.querySelector('.archive-layout > .detail-panel').getBoundingClientRect().left + 1"), 'Wide-screen detail overlaps the table');
+      }
+      if (selector === averageRowSelector && [1920,1440,1024,390,320].includes(width)) {
+        const image = await send('Page.captureScreenshot');
+        await writeFile(join(artifacts, `archive-drawer-${width}.png`), Buffer.from(image.data, 'base64'));
+      }
+      await click('.archive-layout > .detail-panel .detail-panel__heading > button');
+      await waitFor(() => evaluate("!document.querySelector('.archive-layout > .detail-panel.is-open')"), 'archive drawer closes');
+      const closed = await evaluate(`(${archiveGeometry})(${JSON.stringify(selector)})`);
+      assert.ok(Math.abs(closed.tableWidth - before.tableWidth) < 1 && Math.abs(closed.cityWidth - before.cityWidth) < 1, 'Closing detail should restore the original list and city widths');
     }
   }
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
