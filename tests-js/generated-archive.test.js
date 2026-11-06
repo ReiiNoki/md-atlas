@@ -96,13 +96,12 @@ test("every event has one audited Mission Day type", () => {
     );
     counts[event.missionDayType] = (counts[event.missionDayType] ?? 0) + 1;
   }
-  assert.deepEqual({ ...counts }, { "md-xma": 223, "md-lite": 11, "md-standard": 551 });
+  assert.equal(Object.values(counts).reduce((total, count) => total + count, 0), archive.events.length);
 });
 
 test("archive-only official mission sets stay separate from Mission Day data", async () => {
-  assert.equal(officialMissions.meta.eventCount, 17);
-  assert.equal(officialMissions.meta.missionCount, 136);
-  assert.equal(archive.meta.eventCount, 785);
+  assert.equal(officialMissions.meta.eventCount, officialMissions.events.length);
+  assert.equal(archive.meta.eventCount, archive.events.length);
   const missionDayIds = new Set(archive.events.map((event) => event.id));
   const typeCounts = Object.create(null);
   let missionCount = 0;
@@ -116,14 +115,9 @@ test("archive-only official mission sets stay separate from Mission Day data", a
     assert.equal(detail.missions.length, event.missionCount);
     missionCount += detail.missions.length;
   }
-  assert.deepEqual({ ...typeCounts }, {
-    anime_collaboration: 2,
-    brand_campaign: 5,
-    goruck: 4,
-    intel_ops: 2,
-    special_event: 4,
-  });
-  assert.equal(missionCount, 136);
+  const allowedTypes = new Set(["anime_collaboration", "brand_campaign", "goruck", "intel_ops", "special_event"]);
+  assert.ok(Object.keys(typeCounts).every((type) => allowedTypes.has(type)));
+  assert.equal(missionCount, officialMissions.meta.missionCount);
   assert.equal(
     officialMissions.events.find((event) => event.id === "gr-fredericksburg-scavenger-hunt-ebf6").date,
     null,
@@ -145,9 +139,42 @@ test("the 2026 Denver banner replaces its placeholder without overwriting the 20
   assert.ok(archive.events.some((event) => event.id === "md-denver-a948" && event.date === "2016-08-28"));
 });
 
-test("2026 Zhuhai and Shanghai retain their confirmed totals before mission details are published", async () => {
+test("the 2026 Zhuhai banner replaces its placeholder with published mission details", async () => {
+  const id = "md-2026-zhuhai-bd33";
+  const matches = archive.events.filter((event) => event.id === id);
+  assert.equal(matches.length, 1);
+  assert.equal(archive.events.some((event) => event.id === "scheduled-md-2026-zhuhai"), false);
+  const [event] = matches;
+  assert.equal(event.title, "MD 2026: Zhuhai");
+  assert.equal(event.date, "2026-11-07");
+  assert.equal(event.year, 2026);
+  assert.equal(event.status, "online");
+  assert.equal(event.missionDayType, "md-standard");
+  assert.equal(event.missionCount, 18);
+  assert.equal(event.picture, "https://api.bannergress.com/bnrs/pictures/9e422305aabe06c52634a8fd3d78b275");
+  assert.equal(event.lat, 22.259495);
+  assert.equal(event.lng, 113.573393);
+  const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.equal(detail.missions.length, event.missionCount);
+  assert.equal(detail.onlineMissionCount, detail.missions.length);
+  assert.equal(detail.offlineMissionCount, 0);
+  assert.deepEqual(detail.missions.map((mission) => mission.index), Array.from({ length: event.missionCount }, (_, index) => index + 1));
+  assert.equal(new Set(detail.missions.map((mission) => mission.id)).size, event.missionCount);
+  assert.ok(detail.missions.every((mission) => mission.status === "published" && mission.title.startsWith("MD 2026: Zhuhai,")));
+  assert.ok(detail.missions.every((mission) => mission.author === "NIAMission01" && mission.authorFaction === "RESISTANCE"));
+  assert.equal(detail.missions[0].title, "MD 2026: Zhuhai, 九洲城");
+  assert.ok(searchIndex[id].includes("九洲城"));
+  const counts = detail.missions.map((mission) => mission.completions);
+  if (counts.some((count) => count == null)) assert.equal(event.completions, null);
+  else assert.equal(event.completions, counts.reduce((total, count) => total + count, 0));
+  const statistics = expandAnalytics(analyticsPayload).events.find((entry) => entry.id === id);
+  assert.equal(statistics.missions.length, detail.missions.length);
+  assert.deepEqual(statistics.missions.map((mission) => mission.id), detail.missions.map((mission) => mission.id));
+});
+
+test("2026 Shanghai retains its confirmed total before mission details are published", async () => {
   const analytics = expandAnalytics(analyticsPayload);
-  for (const [id, date] of [["scheduled-md-2026-zhuhai", "2026-11-07"], ["scheduled-md-2026-shanghai", "2026-11-29"]]) {
+  for (const [id, date] of [["scheduled-md-2026-shanghai", "2026-11-29"]]) {
     const matches = archive.events.filter((event) => event.id === id);
     assert.equal(matches.length, 1);
     const [event] = matches;

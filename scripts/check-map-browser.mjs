@@ -74,7 +74,9 @@ const { events: officialEvents } = JSON.parse(await readFile(resolve(root, "publ
 const officialEvent = officialEvents[0];
 assert.ok(officialEvent, "Expected an archive-only deep link fixture");
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
-const firstEventCompletions = new Intl.NumberFormat("en-US").format(firstEvent.completions);
+const firstEventCompletions = firstEvent.completions == null
+  ? "—"
+  : new Intl.NumberFormat("en-US").format(firstEvent.completions);
 const oldestEvent = events.filter((event) => event.date).sort((a, b) => a.date.localeCompare(b.date))[0];
 const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
 assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
