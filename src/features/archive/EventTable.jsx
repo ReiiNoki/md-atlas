@@ -64,7 +64,6 @@ export function EventTable({
             {dateSortDirection === "desc" ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </button>
         </span>
-        <span>{t("completionCount")}</span>
         <span>{t("missionCount")}</span>
         <span className="event-table__average-distance-heading">{t("averageMissionDistance")}</span>
         <span className="event-table__average-time-heading">{t("averageMissionTime")}</span>
@@ -91,10 +90,6 @@ export function EventTable({
               </small>
             </span>
             <time dateTime={event.date ?? undefined}>{event.date ?? t("dateUnknown")}</time>
-            <span className="event-row__completions">
-              {event.completions != null ? formatNumber(event.completions) : "—"}
-              <small>{t("completionCount")}</small>
-            </span>
             <span className="event-row__count">
               {event.missionCount != null ? formatNumber(event.missionCount) : "—"}
               <small>{t("missions")}</small>

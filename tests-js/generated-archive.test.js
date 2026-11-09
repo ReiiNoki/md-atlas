@@ -151,10 +151,11 @@ test("the 2026 Zhuhai banner replaces its placeholder with published mission det
   assert.equal(event.status, "online");
   assert.equal(event.missionDayType, "md-standard");
   assert.equal(event.missionCount, 18);
-  assert.equal(event.picture, "https://api.bannergress.com/bnrs/pictures/9e422305aabe06c52634a8fd3d78b275");
+  assert.equal(event.picture, "https://api.bannergress.com/bnrs/pictures/15f92659a7acee59239e05dabff03924");
   assert.equal(event.lat, 22.259495);
   assert.equal(event.lng, 113.573393);
   const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.equal(detail.picture, event.picture, "Zhuhai summary and detail must use the same reviewed image");
   assert.equal(detail.missions.length, event.missionCount);
   assert.equal(detail.onlineMissionCount, detail.missions.length);
   assert.equal(detail.offlineMissionCount, 0);
@@ -170,6 +171,29 @@ test("the 2026 Zhuhai banner replaces its placeholder with published mission det
   const statistics = expandAnalytics(analyticsPayload).events.find((entry) => entry.id === id);
   assert.equal(statistics.missions.length, detail.missions.length);
   assert.deepEqual(statistics.missions.map((mission) => mission.id), detail.missions.map((mission) => mission.id));
+});
+
+test("Zhuhai uses the reviewed latest MDTrace snapshot without summing historical readings", async () => {
+  const event = archive.events.find((entry) => entry.id === "md-2026-zhuhai-bd33");
+  const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.equal(event.date, "2026-11-07", "the collection window must not replace the official event date");
+  assert.equal(event.completions, 2756);
+  assert.equal(event.averageRating, 75.7295);
+  assert.ok(detail.missions.every((mission) => Number.isInteger(mission.completions) && mission.completions >= 0));
+  assert.ok(detail.missions.every((mission) => typeof mission.rating === "number" && mission.rating >= 0 && mission.rating <= 100));
+  assert.equal(event.completions, detail.missions.reduce((sum, mission) => sum + mission.completions, 0));
+  const ratingMean = detail.missions.reduce((sum, mission) => sum + mission.rating, 0) / detail.missions.length;
+  assert.ok(Math.abs(event.averageRating - ratingMean) <= 0.00005, "activity rating is an unweighted task mean");
+  assert.equal(event.missionTimeSampleCount, detail.missions.length);
+  const timeMean = detail.missions.reduce((sum, mission) => sum + mission.timeMilliseconds, 0) / detail.missions.length;
+  assert.ok(Math.abs(event.averageMissionTimeMilliseconds - timeMean) < 1e-6);
+  assert.equal(event.missionDistanceSampleCount, detail.missions.length);
+  assert.ok(Math.abs(event.averageMissionDistanceMeters - 434.8333333333333) < 1e-9);
+  const jiuzhoucheng = detail.missions.find((mission) => mission.id === "bcc535cdf0524b13a06b877c9caf8bcb.1c");
+  assert.equal(jiuzhoucheng.index, 1, "MDTrace order 6 must not overwrite the Bannergress order");
+  assert.equal(jiuzhoucheng.completions, 207);
+  assert.equal(jiuzhoucheng.rating, 85.1852);
+  assert.equal(jiuzhoucheng.timeMilliseconds, 522549);
 });
 
 test("2026 Shanghai retains its confirmed total before mission details are published", async () => {

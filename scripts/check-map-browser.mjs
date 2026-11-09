@@ -74,9 +74,9 @@ const { events: officialEvents } = JSON.parse(await readFile(resolve(root, "publ
 const officialEvent = officialEvents[0];
 assert.ok(officialEvent, "Expected an archive-only deep link fixture");
 const firstCityZh = displayCityName(firstEvent.countryCode, firstEvent.city, "zh");
-const firstEventCompletions = firstEvent.completions == null
+const firstEventMissionCount = firstEvent.missionCount == null
   ? "—"
-  : new Intl.NumberFormat("en-US").format(firstEvent.completions);
+  : new Intl.NumberFormat("en-US").format(firstEvent.missionCount);
 const oldestEvent = events.filter((event) => event.date).sort((a, b) => a.date.localeCompare(b.date))[0];
 const longCjkMarkerEvent = events.find((event) => event.date === "2024-08-31" && event.city === "San Vicente de Cañete");
 assert.ok(longCjkMarkerEvent, "Expected the long CJK calendar marker fixture");
@@ -530,7 +530,8 @@ try {
   // hardcoded number breaks every time the archive grows.
   const archiveEventCount = String(events.length + officialEvents.length);
   assert.ok(await evaluate(`document.querySelector('.archive-tools strong').textContent.replace(/\\D/g, '').includes(${JSON.stringify(archiveEventCount)})`));
-  assert.ok(await evaluate(`document.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)})`));
+  assert.equal(await evaluate("document.querySelector('.event-row__completions')"), null, 'Archive omits completion totals');
+  assert.ok(await evaluate(`document.querySelector('.event-row__count').textContent.includes(${JSON.stringify(firstEventMissionCount)})`));
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
   assert.ok(await evaluate(`(() => {
@@ -542,18 +543,18 @@ try {
     const headers = [...document.querySelectorAll('.event-table__header > span')];
     const row = document.querySelector('.event-row');
     const date = headers[2].getBoundingClientRect();
-    const completions = headers[3].getBoundingClientRect();
-    const missions = headers[4].getBoundingClientRect();
-    const distance = headers[5].getBoundingClientRect(), time = headers[6].getBoundingClientRect();
+    const missions = headers[3].getBoundingClientRect();
+    const distance = headers[4].getBoundingClientRect(), time = headers[5].getBoundingClientRect();
     const rowDistance = row.querySelector('.event-row__average-distance').getBoundingClientRect();
     const rowTime = row.querySelector('.event-row__average-time').getBoundingClientRect();
-    return headers.length === 9 && date.right <= completions.left && completions.right <= missions.left &&
+    return headers.length === 8 && date.right <= missions.left &&
       missions.right <= distance.left && distance.right <= time.left &&
       Math.abs(distance.left - rowDistance.left) < 1 && Math.abs(distance.width - rowDistance.width) < 1 &&
       Math.abs(time.left - rowTime.left) < 1 && Math.abs(time.width - rowTime.width) < 1 &&
-      row.querySelector('.event-row__completions').textContent.includes(${JSON.stringify(firstEventCompletions)}) &&
+      row.querySelector('.event-row__completions') === null &&
+      row.querySelector('.event-row__count').textContent.includes(${JSON.stringify(firstEventMissionCount)}) &&
       document.querySelector('.event-table__body').scrollWidth <= document.querySelector('.event-table__body').clientWidth;
-  })()`), "Desktop archive places completion totals between date and mission count");
+  })()`), "Desktop archive aligns eight columns without completion totals");
   await click(".event-table__date-sort");
   await waitFor(
     () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(oldestEvent.city)}`),
@@ -568,19 +569,19 @@ try {
     "descending archive dates",
   );
   assert.equal(await evaluate("document.querySelector('.event-table__date-heading').getAttribute('aria-sort')"), "descending");
-  const archiveCompletionsScreenshot = await send("Page.captureScreenshot");
-  await writeFile(join(artifacts, "archive-completions-desktop.png"), Buffer.from(archiveCompletionsScreenshot.data, "base64"));
+  const archiveMissionsScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-missions-desktop.png"), Buffer.from(archiveMissionsScreenshot.data, "base64"));
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
   await sleep(250);
   assert.ok(await evaluate(`(() => {
     const row = document.querySelector('.event-row');
-    const completions = row.querySelector('.event-row__completions');
     const missions = row.querySelector('.event-row__count');
-    const c = completions.getBoundingClientRect();
+    const date = row.querySelector('time').getBoundingClientRect();
     const m = missions.getBoundingClientRect();
-    return getComputedStyle(completions.querySelector('small')).display !== 'none' &&
-      getComputedStyle(missions.querySelector('small')).display !== 'none' && c.bottom <= m.top;
-  })()`), "Mobile archive stacks completion and mission totals without overlap");
+    const distance = row.querySelector('.event-row__average-distance').getBoundingClientRect();
+    return row.querySelector('.event-row__completions') === null &&
+      getComputedStyle(missions.querySelector('small')).display !== 'none' && date.bottom <= m.top && m.bottom <= distance.top;
+  })()`), "Mobile archive retains mission counts and averages without a completion row");
   assert.equal(await visible(".event-table__date-sort"), true, "Mobile archive exposes the date sort control");
   await click(".event-table__date-sort");
   await waitFor(
@@ -592,8 +593,8 @@ try {
     () => evaluate(`document.querySelector('.event-row__place strong').textContent === ${JSON.stringify(firstEvent.city)}`),
     "mobile descending archive dates",
   );
-  const archiveCompletionsMobileScreenshot = await send("Page.captureScreenshot");
-  await writeFile(join(artifacts, "archive-completions-mobile.png"), Buffer.from(archiveCompletionsMobileScreenshot.data, "base64"));
+  const archiveMissionsMobileScreenshot = await send("Page.captureScreenshot");
+  await writeFile(join(artifacts, "archive-missions-mobile.png"), Buffer.from(archiveMissionsMobileScreenshot.data, "base64"));
   assert.ok(await evaluate(`(() => {
     const footer = document.querySelector('.intel-statusbar').getBoundingClientRect();
     const content = [
@@ -673,7 +674,7 @@ try {
     const metrics = [...row.querySelectorAll('.event-row__average, .event-row__average small, .event-row__average b')].filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect());
     return { height: rect.height, tableWidth: table.getBoundingClientRect().width, tableRight: table.getBoundingClientRect().right,
       cityWidth: row.querySelector('.event-row__place').getBoundingClientRect().width,
-      dataWidths: [...row.querySelectorAll(':scope > time, :scope > .event-row__completions, :scope > .event-row__count, :scope > .event-row__average, :scope > .event-row__rating, :scope > .status')].map(node => node.getBoundingClientRect().width),
+      dataWidths: [...row.querySelectorAll(':scope > time, :scope > .event-row__count, :scope > .event-row__average, :scope > .event-row__rating, :scope > .status')].map(node => node.getBoundingClientRect().width),
       header: getComputedStyle(document.querySelector('.event-table__header')).display,
       scrollTop: body.scrollTop, fits: body.scrollWidth <= body.clientWidth + 1,
       metricsFit: metrics.length >= 4 && metrics.every(r => r.left >= rect.left - 1 && r.right <= rect.right + 1 && r.top >= rect.top - 1 && r.bottom <= rect.bottom + 1) };
@@ -696,7 +697,7 @@ try {
       }
       if (width >= 1520) {
         assert.equal(after.header, 'grid', 'Wide split layout must retain all table columns');
-        assert.ok(after.cityWidth <= 300 && after.cityWidth < before.cityWidth - 150, `Open detail should trim city-column whitespace at ${width}px`);
+        assert.ok(after.cityWidth > 0 && after.cityWidth < before.cityWidth - 150, `Open detail should trim city-column whitespace at ${width}px`);
         assert.ok(after.dataWidths.every((value, index) => Math.abs(value - before.dataWidths[index]) < 1), 'Only the city column may become narrower');
         assert.ok(await evaluate("document.querySelector('.event-table').getBoundingClientRect().right <= document.querySelector('.archive-layout > .detail-panel').getBoundingClientRect().left + 1"), 'Wide-screen detail overlaps the table');
       }

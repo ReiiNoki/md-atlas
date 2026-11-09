@@ -64,19 +64,21 @@ test("mobile yearly analytics keep event totals visible", () => {
   assert.doesNotMatch(dataStyles, /\.data-year-row span \{ display: none;/);
 });
 
-test("archive table places recorded completions after the event date", () => {
-  const table = renderer.renderLocalized(tableView.EventTable, {
-    events: [{ id: "sample", city: "Tokyo", country: "Japan", countryCode: "JP", date: "2024-01-01", status: "online", completions: 1234, missionCount: 24 }],
-    visibleCount: 60,
-  });
+test("archive table omits event completion totals without removing source data or mission counts", () => {
+  const event = Object.freeze({ id: "sample", city: "Tokyo", country: "Japan", countryCode: "JP", date: "2024-01-01", status: "online", completions: 1234, missionCount: 24 });
+  const table = renderer.renderLocalized(tableView.EventTable, { events: [event], visibleCount: 60 });
   const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
-  const labels = ["date", "completionCount", "missionCount"].map((key) => table.indexOf(translate("zh", key)));
-  assert.ok(labels[0] >= 0 && labels[0] < labels[1] && labels[1] < labels[2]);
+  const labels = ["date", "missionCount"].map((key) => table.indexOf(translate("zh", key)));
+  assert.ok(labels[0] >= 0 && labels[0] < labels[1]);
   assert.match(table, /aria-sort="descending"/);
   assert.ok(table.includes(translate("zh", "sortDateAscending")));
-  assert.match(table, /event-row__completions[^>]*>1,234/);
-  assert.match(archiveStyles, /\.event-row__completions, \.event-row__count/);
-  assert.doesNotMatch(archiveStyles, /event-row__count::after/);
+  assert.doesNotMatch(table, /event-row__completions|1,234/);
+  assert.ok(!table.includes(translate("zh", "completionCount")));
+  assert.match(table, /event-row__count[^>]*>24/);
+  const header = table.split('<div class="event-table__body">')[0];
+  assert.equal((header.match(/<span\b/g) ?? []).length, 8);
+  assert.doesNotMatch(archiveStyles, /event-row__completions|event-row__count::after/);
+  assert.equal(event.completions, 1234, "hiding the column must not alter stored counts");
 });
 
 test("activity feed renders a pinned upcoming MD and two past MDs with honest empty states", () => {
