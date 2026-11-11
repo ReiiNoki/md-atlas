@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { activeFilterEntries } from "../src/domain/filters.js";
-import { INITIAL_FILTERS } from "../src/domain/archive.js";
+import { INITIAL_FILTERS, sortEventsByDate } from "../src/domain/archive.js";
 import { translate } from "../src/i18n/messages.js";
 import { initialMapFeedOpen } from "../src/features/map/feedState.js";
 import { loadJsxModules } from "./helpers/load-jsx.mjs";
@@ -66,7 +66,7 @@ test("mobile yearly analytics keep event totals visible", () => {
 
 test("archive table omits event completion totals without removing source data or mission counts", () => {
   const event = Object.freeze({ id: "sample", city: "Tokyo", country: "Japan", countryCode: "JP", date: "2024-01-01", status: "online", completions: 1234, missionCount: 24 });
-  const table = renderer.renderLocalized(tableView.EventTable, { events: [event], visibleCount: 60 });
+  const table = renderer.renderLocalized(tableView.EventTable, { events: [event], page: 1 });
   const archiveStyles = readFileSync(new URL("../src/styles/views/archive.css", import.meta.url), "utf8");
   const labels = ["date", "missionCount"].map((key) => table.indexOf(translate("zh", key)));
   assert.ok(labels[0] >= 0 && labels[0] < labels[1]);
@@ -79,6 +79,29 @@ test("archive table omits event completion totals without removing source data o
   assert.equal((header.match(/<span\b/g) ?? []).length, 8);
   assert.doesNotMatch(archiveStyles, /event-row__completions|event-row__count::after/);
   assert.equal(event.completions, 1234, "hiding the column must not alter stored counts");
+});
+
+test("archive pagination slices the sorted archive and clamps out-of-range pages", () => {
+  const events = Array.from({ length: 125 }, (_, index) => ({
+    id: `event-${index}`, city: `PageEvent-${index}`, country: "Japan", countryCode: "JP",
+    date: `${2000 + index}-01-01`, status: "online",
+  }));
+  const sorted = sortEventsByDate(events, "desc");
+  for (const [page, start, count] of [[1, 0, 60], [2, 60, 60], [3, 120, 5], [99, 120, 5], [0, 0, 60]]) {
+    const html = renderer.renderLocalized(tableView.EventTable, { events, page });
+    assert.equal((html.match(/class="event-row /g) ?? []).length, count);
+    for (const event of sorted.slice(start, start + count)) {
+      assert.ok(html.includes(`title="${event.city}"`));
+    }
+    assert.match(html, /<nav class="archive-pagination"/);
+    assert.match(html, /aria-label="跳转到页码"/);
+    assert.equal((html.match(/<button type="button" disabled=""/g) ?? []).length, start === 60 ? 0 : 1);
+  }
+  const single = renderer.renderLocalized(tableView.EventTable, { events: events.slice(0, 1) });
+  assert.equal((single.match(/<button type="button" disabled=""/g) ?? []).length, 2);
+  const empty = renderer.renderLocalized(tableView.EventTable, { events: [], page: 3 });
+  assert.match(empty, /empty-state/);
+  assert.doesNotMatch(empty, /archive-pagination/);
 });
 
 test("activity feed renders a pinned upcoming MD and two past MDs with honest empty states", () => {

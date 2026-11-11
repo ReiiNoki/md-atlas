@@ -39,6 +39,14 @@
   .event-row__image .mission-image__loading { font-size: 0; }
   .event-row__image .mission-image__loading::after { width: 24px; height: 3px; border-radius: 999px; content: ""; background: var(--color-divider); }
 
+  .archive-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 12px; border-top: 1px solid var(--color-divider); background: var(--color-surface); }
+  .archive-pagination__summary { color: var(--color-text-muted); font-size: 12px; }
+  .archive-pagination__controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .archive-pagination button, .archive-pagination select { min-height: 36px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--color-divider); border-radius: var(--radius-sm); color: var(--color-text-secondary); background: var(--color-surface-raised); font: inherit; font-size: 12px; cursor: pointer; }
+  .archive-pagination button:hover:not(:disabled) { border-color: var(--color-cyan); color: var(--color-cyan); }
+  .archive-pagination button:disabled { opacity: .4; cursor: not-allowed; }
+  .archive-pagination button:focus-visible, .archive-pagination select:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
+
   /* Only use a split workspace when there is room for all eight list columns. */
   @media (min-width: 1520px) {
     .archive-screen:has(> .archive-layout:not(.detail-closed)) > .intel-surface-heading,
@@ -77,6 +85,5 @@
     .event-row__average small { display: inline; color: var(--color-text-muted); font-size: var(--text-meta); }
     .event-row__rating { display: none; }
     .event-row > .status { grid-column: 3; grid-row: 2 / 4; align-self: center; }
-    .load-more { border-top: 1px solid var(--color-divider); }
   }
 }

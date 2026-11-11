@@ -11,8 +11,8 @@ export function ArchiveView({
   onCloseDetail,
   detailLoadState,
   onRetryDetail,
-  visibleCount,
-  onLoadMore,
+  page,
+  onPageChange,
   isPending,
   onResetFilters,
 }) {
@@ -35,8 +35,8 @@ export function ArchiveView({
             events={events}
             selectedId={selectedEvent?.id}
             onSelect={onSelect}
-            visibleCount={visibleCount}
-            onLoadMore={onLoadMore}
+            page={page}
+            onPageChange={onPageChange}
             onResetFilters={onResetFilters}
           />
         </div>

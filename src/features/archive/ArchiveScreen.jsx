@@ -5,12 +5,12 @@ import { ViewLoading } from "../../shared/ui/ViewLoading";
 import { useEventDetail } from "../../data/useEventDetail";
 import { useLanguage } from "../../i18n.jsx";
 
-// The count survives view switches; a version change resets it without an
+// The page survives view switches; a version change resets it without an
 // effect or an extra paint. Sorting remains in the table and resets on unmount.
 export function ArchiveScreen({ active, detailEnabled, request, events, selectedEvent, onSelect, panels, isPending, onResetFilters }) {
   const { t } = useLanguage();
-  const [page, setPage] = useState({ version: panels.paginationVersion, count: 60 });
-  const visibleCount = page.version === panels.paginationVersion ? page.count : 60;
+  const [page, setPage] = useState({ version: panels.paginationVersion, number: 1 });
+  const currentPage = page.version === panels.paginationVersion ? page.number : 1;
   const detail = useEventDetail(selectedEvent, detailEnabled && panels.detailOpen);
   if (!active) return null;
   if (request.status !== "ready") return (
@@ -30,8 +30,8 @@ export function ArchiveScreen({ active, detailEnabled, request, events, selected
         onCloseDetail={panels.closeDetail}
         detailLoadState={detail.status}
         onRetryDetail={detail.retry}
-        visibleCount={visibleCount}
-        onLoadMore={() => setPage({ version: panels.paginationVersion, count: visibleCount + 60 })}
+        page={currentPage}
+        onPageChange={(number) => setPage({ version: panels.paginationVersion, number })}
         isPending={isPending}
         onResetFilters={onResetFilters}
       />

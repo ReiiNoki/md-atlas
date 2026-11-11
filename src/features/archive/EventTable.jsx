@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, MapPin, Star } from "lucide-react";
 import { ActivityTypeBadge } from "../../components/ActivityTypeBadge";
 import { MissionImage } from "../../components/MissionImage";
@@ -13,8 +13,8 @@ export function EventTable({
   events,
   selectedId,
   onSelect,
-  visibleCount,
-  onLoadMore,
+  page = 1,
+  onPageChange,
   onResetFilters,
 }) {
   const { formatNumber, language, t } = useLanguage();
@@ -23,7 +23,17 @@ export function EventTable({
     () => sortEventsByDate(events, dateSortDirection),
     [events, dateSortDirection],
   );
-  const visibleEvents = sortedEvents.slice(0, visibleCount);
+  const bodyRef = useRef(null);
+  const pageSize = 60;
+  const pageCount = Math.max(1, Math.ceil(sortedEvents.length / pageSize));
+  const currentPage = Math.min(Math.max(1, page), pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  const visibleEvents = sortedEvents.slice(startIndex, startIndex + pageSize);
+  function changePage(number) {
+    onPageChange?.(number);
+    bodyRef.current?.scrollTo({ top: 0 });
+    bodyRef.current?.closest(".primary-surface")?.scrollTo({ top: 0 });
+  }
   const nextDateSortLabel = dateSortDirection === "desc"
     ? t("sortDateAscending")
     : t("sortDateDescending");
@@ -58,7 +68,10 @@ export function EventTable({
             type="button"
             aria-label={nextDateSortLabel}
             title={nextDateSortLabel}
-            onClick={() => setDateSortDirection((current) => current === "desc" ? "asc" : "desc")}
+            onClick={() => {
+              setDateSortDirection((current) => current === "desc" ? "asc" : "desc");
+              changePage(1);
+            }}
           >
             {t("date")}
             {dateSortDirection === "desc" ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
@@ -71,7 +84,7 @@ export function EventTable({
         <span>{t("status")}</span>
       </div>
 
-      <div className="event-table__body">
+      <div className="event-table__body" ref={bodyRef}>
         {visibleEvents.map((event, index) => (
           <button
             type="button"
@@ -113,14 +126,30 @@ export function EventTable({
         ))}
       </div>
 
-      {visibleEvents.length < events.length ? (
-        <button className="load-more" type="button" onClick={onLoadMore}>
-          {t("loadNext")}
-          <span>
-            {formatNumber(visibleEvents.length)} / {formatNumber(events.length)}
-          </span>
-        </button>
-      ) : null}
+      <nav className="archive-pagination" aria-label={t("archivePagination")}>
+        <span className="archive-pagination__summary" role="status">
+          {t("archivePageRange", {
+            start: formatNumber(startIndex + 1),
+            end: formatNumber(startIndex + visibleEvents.length),
+            total: formatNumber(events.length),
+          })}
+        </span>
+        <div className="archive-pagination__controls">
+          <button type="button" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>
+            {t("previousPage")}
+          </button>
+          <select aria-label={t("goToPage")} value={currentPage} onChange={(event) => changePage(Number(event.target.value))}>
+            {Array.from({ length: pageCount }, (_, index) => (
+              <option key={index + 1} value={index + 1}>
+                {t("archivePageNumber", { page: formatNumber(index + 1), total: formatNumber(pageCount) })}
+              </option>
+            ))}
+          </select>
+          <button type="button" disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}>
+            {t("nextPage")}
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
