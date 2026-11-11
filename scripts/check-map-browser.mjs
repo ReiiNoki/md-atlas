@@ -1182,9 +1182,14 @@ try {
   // Lightweight screen owners retain only the UI state that historically lived
   // in App. Heavy subtrees must still reset their component-local state.
   await send('Page.navigate', { url: `${pageUrl}archive` });
-  await waitFor(() => visible('.load-more'), 'pagination baseline');
-  await click('.load-more');
-  await waitFor(() => evaluate("document.querySelectorAll('.event-row').length === 120"), 'second page');
+  await waitFor(() => visible('.archive-pagination select'), 'pagination baseline');
+  assert.equal(await evaluate("document.querySelector('.archive-pagination select').value"), '1');
+  assert.equal(await evaluate("document.querySelector('.archive-pagination__controls button:first-child').disabled"), true);
+  const firstPageCity = await evaluate("document.querySelector('.event-row__place strong').textContent");
+  await click('.archive-pagination__controls button:last-child');
+  await waitFor(() => evaluate("document.querySelector('.archive-pagination select').value === '2' && document.querySelectorAll('.event-row').length === 60"), 'second page');
+  const secondPageCity = await evaluate("document.querySelector('.event-row__place strong').textContent");
+  assert.notEqual(secondPageCity, firstPageCity, 'Pagination replaces rows rather than appending them');
   await view(1);
   await waitFor(() => visible('.event-feed'), 'map feed owner');
   await click('.map-activity-button');
@@ -1199,10 +1204,12 @@ try {
   assert.equal(await evaluate("document.querySelector('.event-feed__upcoming-card')?.dataset.eventId"), apacUpcoming?.id,
     "Region tabs also filter the pinned upcoming MD");
   await view(2);
-  await waitFor(() => evaluate("document.querySelectorAll('.event-row').length === 120"), 'pagination survives view switch');
+  await waitFor(() => evaluate("document.querySelector('.archive-pagination select')?.value === '2' && document.querySelectorAll('.event-row').length === 60"), 'pagination survives view switch');
+  assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), secondPageCity);
   await click('.intel-filter-button');
   await click('.filter-console header button');
-  await waitFor(() => evaluate("document.querySelectorAll('.event-row').length === 60"), 'filter reset resets pagination');
+  await waitFor(() => evaluate("document.querySelector('.archive-pagination select')?.value === '1' && document.querySelectorAll('.event-row').length === 60"), 'filter reset resets pagination');
+  assert.equal(await evaluate("document.querySelector('.event-row__place strong').textContent"), firstPageCity);
   await view(1);
   await waitFor(() => visible('.event-feed nav button.is-active'), 'feed region retained');
   assert.equal(await evaluate("document.querySelector('.event-feed nav button.is-active').textContent.trim()"), 'APAC');
