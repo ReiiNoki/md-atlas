@@ -41,9 +41,9 @@ export function normalizeXmAnomalies(payload) {
 }
 
 export function filterXmAnomalies(records, filters, query = filters.query) {
-  // These two controls describe Mission Day records specifically. A selected
-  // value must not silently leak unrelated Anomalies into the calendar.
-  if (filters.missionDayType !== "all") return [];
+  // MD type and event tags describe Mission Day records, not standalone
+  // Anomalies. A selected value must not leak unrelated calendar entries.
+  if (filters.missionDayType !== "all" || (filters.eventTag ?? "all") !== "all") return [];
 
   return records.filter((event) => {
     if (filters.year !== "all" && String(event.year) !== filters.year) return false;

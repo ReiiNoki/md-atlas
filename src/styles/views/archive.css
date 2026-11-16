@@ -26,8 +26,10 @@
   .event-row__place { display: flex; flex-direction: column; gap: 2px; }
   .event-row__place strong { overflow: hidden; color: var(--color-text); font-size: 15px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .event-row.is-selected .event-row__place strong { color: var(--color-cyan); }
-  .event-row__place small { display: flex; align-items: center; gap: 4px; overflow: hidden; color: var(--color-text-muted); font-size: var(--text-meta); text-overflow: ellipsis; white-space: nowrap; }
-  .event-row__place small .activity-type { margin-left: 8px; }
+  .event-row__place small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--color-text-muted); font-size: var(--text-meta); }
+  .event-row__location { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 4px; }
+  .event-row__location svg { flex-shrink: 0; }
+  .event-row__location > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .event-row__average { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   .event-row__average small { display: none; }
   .event-row__average b { min-width: 0; overflow-wrap: anywhere; color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 400; }

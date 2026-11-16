@@ -35,13 +35,13 @@ for (const id of ["md-2026-asahikawa-ee08", "md-2026-paris-79e4", "md-2026-ä½›å±
 }
 
 test("pathname and all filters round-trip independently", () => {
-  const filters = { query: "kyoto", year: "2019", region: "APAC", country: "JP", missionDayType: "md-xma", status: "offline" };
+  const filters = { query: "kyoto", year: "2019", region: "APAC", country: "JP", missionDayType: "md-xma", eventTag: "mosaic-md", status: "offline" };
   for (const state of [
     { view: "calendar", filters, event: null },
     { view: "archive", filters, event: "md-2019kyoto-c90c" },
   ]) {
     const url = serializeUrlState(state);
-    assert.equal(url.search, "?q=kyoto&year=2019&region=APAC&country=JP&type=md-xma&status=offline");
+    assert.equal(url.search, "?q=kyoto&year=2019&region=APAC&country=JP&type=md-xma&tag=mosaic-md&status=offline");
     assert.deepEqual(parseUrlState(url), state);
   }
   assert.deepEqual(parse("archive", "?year=2026&country=JP").filters,
@@ -54,6 +54,39 @@ test("non-MD activity filters remain archive-only, including resource routes", (
   }
   assert.equal(parse("", "?type=goruck").filters.missionDayType, "all");
   assert.equal(parse("data", "?type=intel_ops").filters.missionDayType, "all");
+});
+
+test("tag links work in all MD views and stay separate from primary types", () => {
+  for (const path of ["", "archive", "calendar", "data", "md/example"]) {
+    const state = parse(path, "?type=md-xma&tag=mosaic-md");
+    assert.equal(state.filters.eventTag, "mosaic-md");
+    assert.equal(state.filters.missionDayType, "md-xma");
+    assert.deepEqual(parseUrlState(serializeUrlState(state)), state);
+  }
+  assert.equal(parse("archive", "?type=mosaic-md").filters.missionDayType, "all");
+  assert.equal(parse("archive", "?type=mosaic-md").filters.eventTag, "all");
+  for (const value of ["unknown", "MOSAIC-MD", "toString", "all", ""]) {
+    const state = parse("archive", `?tag=${value}`);
+    assert.equal(state.filters.eventTag, "all");
+    assert.equal(serializeUrlState(state).search, "");
+  }
+});
+
+test("tag clearing, reset, history restoration and view changes preserve independent filters", () => {
+  const state = initial("archive", "?country=IT&type=md-xma&tag=mosaic-md");
+  const cleared = explorerReducer(state, { type: "filter", key: "eventTag", value: "all" });
+  assert.equal(cleared.filters.missionDayType, "md-xma");
+  assert.equal(cleared.filters.country, "IT");
+  assert.equal(cleared.filters.eventTag, "all");
+  assert.equal(cleared.writeMode, "push");
+  const restored = explorerReducer(cleared, { type: "restore", location: location("archive", "?country=IT&type=md-xma&tag=mosaic-md") });
+  assert.equal(restored.filters.eventTag, "mosaic-md");
+  assert.equal(explorerReducer(restored, { type: "view", view: "data" }).filters.eventTag, "mosaic-md");
+  assert.deepEqual(explorerReducer(restored, { type: "reset" }).filters, INITIAL_FILTERS);
+  const official = initial("archive", "?type=goruck&tag=mosaic-md");
+  const map = explorerReducer(official, { type: "view", view: "map" });
+  assert.equal(map.filters.missionDayType, "all");
+  assert.equal(map.filters.eventTag, "mosaic-md");
 });
 
 test("invalid root routes and encodings default safely without interpreting old prefixes", () => {

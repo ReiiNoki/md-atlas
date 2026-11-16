@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { ActivityTypeBadge } from "./ActivityTypeBadge";
+import { EventTagBadges } from "./EventTagBadges";
 import { MissionImage } from "./MissionImage";
 import { StatusBadge } from "./StatusBadge";
 import { useLanguage } from "../i18n.jsx";
@@ -174,7 +175,10 @@ export function EventDetail({
         </div>
         <div>
           <dt>{t("activityType")}</dt>
-          <dd><ActivityTypeBadge type={eventActivityType(event)} /></dd>
+          <dd className="activity-badges">
+            <ActivityTypeBadge type={eventActivityType(event)} />
+            <EventTagBadges event={event} />
+          </dd>
         </div>
         <div>
           <dt>{t("missionCount")}</dt>

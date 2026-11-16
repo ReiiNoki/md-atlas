@@ -1,6 +1,7 @@
 import { Filter, X } from "lucide-react";
 import { useLanguage } from "../i18n.jsx";
 import { displayCountryName } from "../domain/geography/locations";
+import { EVENT_TAG_IDS, eventTagLabel } from "../domain/eventTags.js";
 import {
   ACTIVITY_TYPES,
   OFFICIAL_MISSION_TYPES,
@@ -93,6 +94,19 @@ export function FilterConsole({
             (type) => includeOfficialTypes || !OFFICIAL_MISSION_TYPES.includes(type),
           ).map((type) => (
             <option key={type} value={type}>{activityTypeLabel(type, t)}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {t("eventTags")}
+        <select
+          name="eventTag"
+          value={filters.eventTag ?? "all"}
+          onChange={(event) => onFilterChange("eventTag", event.target.value)}
+        >
+          <option value="all">{t("allEventTags")}</option>
+          {EVENT_TAG_IDS.map((tag) => (
+            <option key={tag} value={tag}>{eventTagLabel(tag, t)}</option>
           ))}
         </select>
       </label>

@@ -15,6 +15,7 @@
   .event-facts > div:nth-child(odd) { margin-right: 16px; }
   .event-facts .event-facts__wide { grid-column: 1 / -1; margin-right: 0; }
   .event-facts dt { color: var(--color-text-muted); font-size: var(--text-meta); }
+  .event-facts dd.activity-badges { justify-content: flex-end; }
   .event-facts dd { min-width: 0; margin: 0; overflow: hidden; color: var(--color-text); font-family: var(--font-mono); font-size: 12px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
   .fact-rating { display: flex; align-items: center; gap: 4px; color: var(--color-amber) !important; }
 }

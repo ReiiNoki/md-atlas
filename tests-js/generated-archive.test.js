@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { expandAnalytics } from "../src/domain/archive.js";
+import { expandAnalytics, filterEvents, INITIAL_FILTERS } from "../src/domain/archive.js";
 
 const publicRoot = new URL("../public/", import.meta.url);
 const archive = JSON.parse(await readFile(new URL("data/archive.json", publicRoot), "utf8"));
@@ -122,6 +122,62 @@ test("archive-only official mission sets stay separate from Mission Day data", a
     officialMissions.events.find((event) => event.id === "gr-fredericksburg-scavenger-hunt-ebf6").date,
     null,
   );
+});
+
+test("New Taipei Christmasland is a standard MD with a separate audited mosaic label", async () => {
+  const id = "新北耶誕城-9203";
+  const event = archive.events.find((entry) => entry.id === id);
+  assert.ok(event);
+  assert.equal(event.title, "新北耶誕城");
+  assert.equal(event.date, "2015-12-05");
+  assert.equal(event.missionDayType, "md-standard");
+  assert.deepEqual(event.tags, ["mosaic-md"]);
+  assert.equal(event.missionCount, 18);
+  const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.equal(detail.missionDayType, event.missionDayType);
+  assert.deepEqual(detail.tags, event.tags);
+  assert.equal(detail.missions.length, 18);
+  assert.equal(detail.missions[0].id, "9b2b06a131b64623a1d9ffc185740394.1c");
+  assert.equal(detail.missions[17].id, "4c056361de7e42e4b4419fd8e48fe35e.1c");
+  assert.ok(searchIndex[id].includes("新北耶誕城01-18"));
+  assert.equal(expandAnalytics(analyticsPayload).events.find((entry) => entry.id === id).missions.length, 18);
+  assert.equal(officialMissions.events.some((entry) => entry.id === id), false);
+  assert.equal(Object.hasOwn(officialMissionSearchIndex, id), false);
+  assert.equal(officialMissions.events.find((entry) => entry.id === "festival-of-lights-2016-b5af").activityType, "special_event");
+  assert.equal(archive.events.find((entry) => entry.id === "md-berlin-84b2").missionCount, 24);
+});
+
+test("seven audited mosaic MDs retain independent types and intersect with real data filters", async () => {
+  const expected = [
+    ["新北耶誕城-9203", "2015-12-05", "md-standard", 18],
+    ["milan-mission-day-e60a", "2015-12-13", "md-xma", 24],
+    ["md-aegis-nova-brooklyn-ny-1862", "2016-05-29", "md-xma", 42],
+    ["niantic-mission-day-moscow-7106", "2016-06-26", "md-xma", 24],
+    ["niantic-mission-day-sydney-a4d6", "2016-06-26", "md-xma", 24],
+    ["md-building-our-singapore-14dc", "2016-09-25", "md-xma", 18],
+    ["md-melaka-ce1f", "2017-05-14", "md-standard", 18],
+  ];
+  const filters = { ...INITIAL_FILTERS, eventTag: "mosaic-md" };
+  const tagged = filterEvents(archive.events, filters);
+  assert.deepEqual(tagged.map((event) => event.id).sort(), expected.map(([id]) => id).sort());
+  assert.equal(tagged.reduce((count, event) => count + event.missionCount, 0), 168);
+  assert.equal(filterEvents(archive.events, { ...filters, missionDayType: "md-xma" }).length, 5);
+  assert.equal(filterEvents(archive.events, { ...filters, missionDayType: "md-standard" }).length, 2);
+  assert.equal(filterEvents(archive.events, { ...filters, missionDayType: "md-lite" }).length, 0);
+  assert.equal(filterEvents(archive.events, { ...filters, year: "2016" }).length, 4);
+  for (const [id, date, type, count] of expected) {
+    const event = tagged.find((entry) => entry.id === id);
+    assert.equal(event.date, date);
+    assert.equal(event.missionDayType, type);
+    assert.deepEqual(event.tags, ["mosaic-md"]);
+    assert.equal(event.missionCount, count);
+    const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+    assert.equal(detail.missionDayType, type);
+    assert.deepEqual(detail.tags, event.tags);
+    assert.equal(detail.missions.length, count);
+    assert.equal(officialMissions.events.some((entry) => entry.id === id), false);
+  }
+  assert.ok(["md-penang-b331", "md-penang-heritage-22d6"].every((id) => !tagged.some((event) => event.id === id)));
 });
 
 test("the 2026 Denver banner replaces its placeholder without overwriting the 2016 event", async () => {

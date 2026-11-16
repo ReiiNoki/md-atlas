@@ -88,6 +88,8 @@ test("calendar filters apply common criteria without conflating MD types", () =>
   assert.ok(filterXmAnomalies(anomalies, INITIAL_FILTERS, "shōnin")
     .every((event) => event.series === "Shōnin"));
   assert.equal(filterXmAnomalies(anomalies, { ...INITIAL_FILTERS, missionDayType: "md-xma" }).length, 0);
+  assert.equal(filterXmAnomalies(anomalies, { ...INITIAL_FILTERS, eventTag: "mosaic-md" }).length, 0);
+  assert.equal(filterXmAnomalies(anomalies, { ...INITIAL_FILTERS, eventTag: undefined }).length, 484);
   assert.equal(filterXmAnomalies(anomalies, { ...INITIAL_FILTERS, status: "online" }).length, 0);
 });
 

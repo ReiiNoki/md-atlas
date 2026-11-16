@@ -1,6 +1,7 @@
 import { BASE_PATH } from "../../site.config.js";
 import { INITIAL_FILTERS } from "../domain/archive.js";
 import { ACTIVITY_TYPES, OFFICIAL_MISSION_TYPES } from "../domain/activityTypes.js";
+import { EVENT_TAG_IDS } from "../domain/eventTags.js";
 
 /** Views and filter enums mirrored from the UI so links can be validated lazily. */
 export const URL_VIEWS = ["map", "archive", "calendar", "data"];
@@ -38,6 +39,7 @@ export function parseUrlState({ pathname = BASE_PATH, search = "" } = {}) {
   const countryParam = params.get("country");
   const statusParam = params.get("status");
   const missionDayTypeParam = params.get("type");
+  const eventTagParam = params.get("tag");
   return {
     view: route.view,
     filters: {
@@ -56,6 +58,7 @@ export function parseUrlState({ pathname = BASE_PATH, search = "" } = {}) {
         (route.view === "archive" || !OFFICIAL_MISSION_TYPES.includes(missionDayTypeParam))
           ? missionDayTypeParam
           : "all",
+      eventTag: EVENT_TAG_IDS.includes(eventTagParam) ? eventTagParam : "all",
       status: URL_STATUSES.includes(statusParam) ? statusParam : "all",
     },
     event: route.event,
@@ -67,7 +70,7 @@ export function serializeUrlState({ view = "map", filters = INITIAL_FILTERS, eve
   const params = new URLSearchParams();
   const pathname = event ? `${BASE_PATH}md/${encodeURIComponent(event)}`
     : URL_VIEWS.includes(view) && view !== "map" ? `${BASE_PATH}${view}` : BASE_PATH;
-  const { query, year, region, country, missionDayType, status } = filters;
+  const { query, year, region, country, missionDayType, eventTag, status } = filters;
   if (query && query.trim()) params.set("q", query);
   if (year && year !== "all" && YEAR_PATTERN.test(year)) params.set("year", year);
   if (region && region !== "all" && URL_REGIONS.includes(region)) params.set("region", region);
@@ -77,6 +80,7 @@ export function serializeUrlState({ view = "map", filters = INITIAL_FILTERS, eve
     missionDayType !== "all" &&
     URL_MISSION_DAY_TYPES.includes(missionDayType)
   ) params.set("type", missionDayType);
+  if (EVENT_TAG_IDS.includes(eventTag)) params.set("tag", eventTag);
   if (status && status !== "all" && URL_STATUSES.includes(status)) params.set("status", status);
   const querystring = params.toString();
   return { pathname, search: querystring ? `?${querystring}` : "" };

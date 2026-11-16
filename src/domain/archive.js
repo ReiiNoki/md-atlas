@@ -1,5 +1,6 @@
 import { citySearchAliases, countrySearchAliases, normalizeCountryCode } from "./geography/locations.js";
 import { eventActivityType } from "./activityTypes.js";
+import { eventTagSearchTerms, knownEventTags } from "./eventTags.js";
 
 export const INITIAL_FILTERS = {
   query: "",
@@ -7,6 +8,7 @@ export const INITIAL_FILTERS = {
   region: "all",
   country: "all",
   missionDayType: "all",
+  eventTag: "all",
   status: "all",
 };
 
@@ -17,6 +19,7 @@ export function matchesQuery(event, query, indexedText = event.searchText) {
     ...citySearchAliases(event.countryCode, event.city),
     ...countrySearchAliases(event.countryCode, event.country),
     event.title,
+    ...eventTagSearchTerms(event),
     indexedText,
   ]
     .filter(Boolean)
@@ -42,6 +45,7 @@ export function filterEvents(
       filters.missionDayType !== "all" &&
       eventActivityType(event) !== filters.missionDayType
     ) return false;
+    if ((filters.eventTag ?? "all") !== "all" && !knownEventTags(event).includes(filters.eventTag)) return false;
     if (filters.status !== "all" && event.status !== filters.status) return false;
     return matchesQuery(event, deferredQuery, searchIndex?.[event.id] ?? event.searchText);
   });

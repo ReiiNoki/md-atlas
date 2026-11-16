@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, MapPin, Star } from "lucide-react";
 import { ActivityTypeBadge } from "../../components/ActivityTypeBadge";
+import { EventTagBadges } from "../../components/EventTagBadges";
 import { MissionImage } from "../../components/MissionImage";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useLanguage } from "../../i18n.jsx";
@@ -97,9 +98,14 @@ export function EventTable({
             <span className="event-row__place">
               <strong title={event.city}>{displayCityName(event.countryCode, event.city, language)}</strong>
               <small>
-                <MapPin size={11} aria-hidden="true" />
-                {displayCountryName(event.countryCode, event.country, language)}{event.region ? ` · ${event.region}` : ""}
-                <ActivityTypeBadge type={eventActivityType(event)} />
+                <span className="event-row__location">
+                  <MapPin size={11} aria-hidden="true" />
+                  <span>{displayCountryName(event.countryCode, event.country, language)}{event.region ? ` · ${event.region}` : ""}</span>
+                </span>
+                <span className="activity-badges">
+                  <ActivityTypeBadge type={eventActivityType(event)} />
+                  <EventTagBadges event={event} />
+                </span>
               </small>
             </span>
             <time dateTime={event.date ?? undefined}>{event.date ?? t("dateUnknown")}</time>

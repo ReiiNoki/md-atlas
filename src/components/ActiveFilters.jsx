@@ -4,12 +4,14 @@ import { useLanguage } from "../i18n.jsx";
 import { displayCountryName } from "../domain/geography/locations";
 import { activeFilterEntries } from "../domain/filters";
 import { activityTypeLabel } from "../domain/activityTypes";
+import { eventTagLabel } from "../domain/eventTags.js";
 
 const filterLabels = {
   year: (value, t) => value,
   region: (value, t) => value,
   country: (value, t, language) => displayCountryName(value, undefined, language),
   missionDayType: (value, t) => activityTypeLabel(value, t),
+  eventTag: (value, t) => eventTagLabel(value, t),
   status: (value, t) =>
     ({
       online: t("online"),
