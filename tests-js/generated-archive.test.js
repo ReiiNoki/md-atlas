@@ -336,6 +336,33 @@ test("the 2026 Novi Sad banner replaces its own placeholder without changing Kho
   assert.equal(khonKaen.status, "online");
 });
 
+test("the November 17 IITC import supplies all 42 Khon Kaen and Novi Sad statistics", async () => {
+  const expected = [
+    ["md-2026-khon-kaen-5d27", 24, 99.1071, 299, 638.6458333333334, 705508.0416666666, 18, 633.6, 911110],
+    ["md-novi-sad-novi-sad-f1a1", 18, 99.8017, 719, 398.2055555555555, 835571.4444444445, 30, 168.7, 710331],
+  ];
+  for (const [id, count, rating, completions, distance, time, firstCount, firstDistance, firstTime] of expected) {
+    const event = archive.events.find((entry) => entry.id === id);
+    const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+    assert.equal(event.averageRating, rating);
+    assert.equal(event.completions, completions, "sum of mission counters, not event attendance");
+    assert.equal(event.missionDistanceSampleCount, count);
+    assert.equal(event.missionTimeSampleCount, count);
+    assert.ok(Math.abs(event.averageMissionDistanceMeters - distance) < 1e-8);
+    assert.ok(Math.abs(event.averageMissionTimeMilliseconds - time) < 1e-6);
+    assert.ok(detail.missions.every((mission) => Number.isFinite(mission.rating) && mission.rating >= 0 && mission.rating <= 100));
+    assert.ok(detail.missions.every((mission) => Number.isInteger(mission.completions) && mission.completions >= 0 && mission.timeMilliseconds > 0));
+    assert.equal(detail.missions[0].rating, 100);
+    assert.equal(detail.missions[0].completions, firstCount);
+    assert.equal(detail.missions[0].distanceMeters, firstDistance);
+    assert.equal(detail.missions[0].timeMilliseconds, firstTime);
+    const statistics = expandAnalytics(analyticsPayload).events.find((entry) => entry.id === id);
+    for (const key of ["id", "rating", "completions", "distanceMeters", "timeMilliseconds"]) {
+      assert.deepEqual(statistics.missions.map((mission) => mission[key]), detail.missions.map((mission) => mission[key]));
+    }
+  }
+});
+
 test("2026 Shanghai retains its confirmed total before mission details are published", async () => {
   const analytics = expandAnalytics(analyticsPayload);
   for (const [id, date] of [["scheduled-md-2026-shanghai", "2026-11-29"]]) {
