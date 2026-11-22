@@ -363,6 +363,67 @@ test("the November 17 IITC import supplies all 42 Khon Kaen and Novi Sad statist
   }
 });
 
+test("the 2026 Putrajaya Banner replaces only its scheduled placeholder with 18 published missions", async () => {
+  const id = "md-2026-putrajaya-9457";
+  const matches = archive.events.filter((event) => event.id === id);
+  assert.equal(matches.length, 1);
+  assert.equal(archive.events.some((event) => event.id === "scheduled-md-2026-putrajaya"), false);
+  const [event] = matches;
+  assert.equal(event.title, "MD 2026: Putrajaya");
+  assert.equal(event.city, "Putrajaya");
+  assert.equal(event.countryCode, "MY");
+  assert.equal(event.date, "2026-11-21");
+  assert.equal(event.year, 2026);
+  assert.equal(event.status, "online");
+  assert.equal(event.missionDayType, "md-standard");
+  assert.equal(event.missionCount, 18);
+  assert.equal(event.picture, "https://api.bannergress.com/bnrs/pictures/906c0b1f73a39cbfc84b57c0af471036");
+  assert.equal(event.lat, 2.912906);
+  assert.equal(event.lng, 101.678201);
+  assert.equal(event.averageRating, 90.3433);
+  assert.equal(event.completions, 936);
+  assert.equal(event.missionDistanceSampleCount, 18);
+  assert.ok(Math.abs(event.averageMissionDistanceMeters - 282.60555555555555) < 1e-8);
+  assert.ok(Math.abs(event.averageMissionTimeMilliseconds - 475015.27777777775) < 1e-6);
+  assert.equal(event.missionTimeSampleCount, 18);
+  assert.equal(event.tags, undefined, "do not infer a mosaic label from a shared artwork template");
+  const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.equal(detail.timezone, "Asia/Kuala_Lumpur");
+  assert.equal(detail.date, detail.endDate);
+  assert.equal(detail.picture, event.picture);
+  assert.equal(detail.onlineMissionCount, 18);
+  assert.equal(detail.offlineMissionCount, 0);
+  assert.equal(detail.missions.length, 18);
+  assert.deepEqual(detail.missions.map((mission) => mission.index), Array.from({ length: 18 }, (_, i) => i + 1));
+  assert.equal(new Set(detail.missions.map((mission) => mission.id)).size, 18);
+  assert.ok(detail.missions.every((mission) => mission.status === "published" && !mission.offline));
+  assert.ok(detail.missions.every((mission) => mission.author === "NIAMission01" && mission.authorFaction === "RESISTANCE"));
+  assert.ok(detail.missions.every((mission) => Number.isFinite(mission.rating) && mission.completions >= 0 && mission.timeMilliseconds > 0));
+  assert.equal(detail.missions[0].id, "de53ea4ce0424d798956592a5f76549d.1c");
+  assert.equal(detail.missions[0].title, "MD 2026: Putrajaya, China-M'sia Friendship Garden");
+  assert.equal(detail.missions[17].id, "2c34f35ad3f3485e8f5b7250b609f8e0.1c");
+  assert.equal(detail.missions[17].title, "MD 2026: Putrajaya, Taman Seri Empangan");
+  assert.ok(searchIndex[id].includes("China-M'sia Friendship Garden") && searchIndex[id].includes("Taman Seri Empangan"));
+  const statistics = expandAnalytics(analyticsPayload).events.find((entry) => entry.id === id);
+  assert.deepEqual(statistics.missions.map((mission) => mission.id), detail.missions.map((mission) => mission.id));
+  assert.equal(archive.events.find((entry) => entry.id === "scheduled-md-2026-shanghai").missionCount, 18);
+});
+
+test("Putrajaya's November 22 Intel snapshot keeps source statistics and the original mission order", async () => {
+  const event = archive.events.find((entry) => entry.id === "md-2026-putrajaya-9457");
+  const detail = JSON.parse(await readFile(new URL(event.detailPath, publicRoot), "utf8"));
+  assert.deepEqual(detail.missions.map((mission) => mission.rating), [88.57, 100, 88.24, 88, 89.13, 88.46, 82.5, 96.3, 86.67, 96.15, 87.23, 87.5, 94.44, 87.18, 96.15, 87.8, 85.71, 96.15]);
+  assert.deepEqual(detail.missions.map((mission) => mission.completions), [55, 31, 52, 40, 72, 35, 63, 46, 71, 43, 83, 40, 34, 77, 46, 73, 30, 45]);
+  assert.equal(detail.missions[0].timeMilliseconds, 370834);
+  assert.equal(detail.missions[0].distanceMeters, 146.2);
+  assert.equal(detail.missions[9].title, "MD 2026: Putrajaya, National Heroes Square");
+  assert.equal(detail.missions[9].timeMilliseconds, 443383, "export capture order must not move mission 10 after mission 17");
+  const statistics = expandAnalytics(analyticsPayload).events.find((entry) => entry.id === event.id);
+  for (const key of ["id", "author", "authorFaction", "rating", "completions", "distanceMeters", "timeMilliseconds"]) {
+    assert.deepEqual(statistics.missions.map((mission) => mission[key]), detail.missions.map((mission) => mission[key]));
+  }
+});
+
 test("2026 Shanghai retains its confirmed total before mission details are published", async () => {
   const analytics = expandAnalytics(analyticsPayload);
   for (const [id, date] of [["scheduled-md-2026-shanghai", "2026-11-29"]]) {
