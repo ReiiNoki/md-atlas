@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { useLanguage } from "../../i18n.jsx";
-import { defaultCalendarDate } from "../../domain/calendarDates";
+import { defaultCalendarDate, nextMissionDayDate } from "../../domain/calendarDates";
+import { useCalendarToday } from "./useCalendarToday";
 import { activityLocation } from "./calendarLabels";
 import { CalendarNavigation } from "./CalendarNavigation";
 import { CalendarGrid } from "./CalendarGrid";
@@ -9,6 +10,7 @@ import { CalendarAgenda } from "./CalendarAgenda";
 
 export function CalendarView({ events, xmAnomalies = [] }) {
   const { locale, language, t } = useLanguage();
+  const today = useCalendarToday();
   const months = useMemo(() => Array.from({ length: 12 }, (_, month) =>
     new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, month, 1)))), [locale]);
   const weekdays = useMemo(() => Array.from({ length: 7 }, (_, day) =>
@@ -22,24 +24,26 @@ export function CalendarView({ events, xmAnomalies = [] }) {
     return [...missionDays, ...anomalies];
   }, [activityType, events, xmAnomalies]);
   const datedEvents = useMemo(() => sourceActivities.filter((event) => event.date && Number.isFinite(event.year)), [sourceActivities]);
-  const years = useMemo(() => [...new Set(datedEvents.map((event) => event.year))].sort((a, b) => b - a), [datedEvents]);
-  const latestEvent = useMemo(() => [...datedEvents].sort((a, b) => b.date.localeCompare(a.date))[0], [datedEvents]);
-  // Entering the calendar targets the next activity that has not started yet;
-  // with nothing upcoming it targets the current date.
-  const today = new Date().toISOString().slice(0, 10);
-  const defaultDate = useMemo(() => defaultCalendarDate(datedEvents, today), [datedEvents, today]);
-  const [requestedYear, setRequestedYear] = useState(() => Number(defaultDate.slice(0, 4)));
-  const [requestedMonth, setRequestedMonth] = useState(() => Number(defaultDate.slice(5, 7)) - 1);
-  const [requestedDate, setRequestedDate] = useState(() => defaultDate);
+  const defaultDate = defaultCalendarDate(today);
+  const defaultYear = Number(defaultDate.slice(0, 4));
+  const defaultMonth = Number(defaultDate.slice(5, 7)) - 1;
+  // Keep the current year navigable even if its events have not been announced.
+  const years = useMemo(() => datedEvents.length
+    ? [...new Set([...datedEvents.map((event) => event.year), defaultYear])].sort((a, b) => b - a)
+    : [], [datedEvents, defaultYear]);
+  const nextMdDate = useMemo(() => nextMissionDayDate(datedEvents, today), [datedEvents, today]);
+  // Null means follow today, including after midnight, until the user browses.
+  const [requestedYear, setRequestedYear] = useState(null);
+  const [requestedMonth, setRequestedMonth] = useState(null);
+  const [requestedDate, setRequestedDate] = useState(null);
   const [selectedActivityId, setSelectedActivityId] = useState(null);
   const [wheelDirection, setWheelDirection] = useState(null);
   const wheelLockedRef = useRef(false);
   const wheelTimerRef = useRef(null);
   const requestedYearAvailable = years.includes(requestedYear);
-  const activeYear = requestedYearAvailable ? requestedYear : latestEvent?.year;
-  const latestMonth = latestEvent ? Number(latestEvent.date.slice(5, 7)) - 1 : 0;
+  const activeYear = requestedYearAvailable ? requestedYear : defaultYear;
   const activeMonth = requestedYearAvailable && Number.isInteger(requestedMonth) && requestedMonth >= 0 && requestedMonth < 12
-    ? requestedMonth : latestMonth;
+    ? requestedMonth : defaultMonth;
   const eventsByDate = useMemo(() => {
     const groups = new Map();
     for (const event of datedEvents) {
@@ -55,11 +59,10 @@ export function CalendarView({ events, xmAnomalies = [] }) {
   }, [activeMonth, activeYear, datedEvents, language, locale, t]);
   const dates = [...eventsByDate.keys()].sort((a, b) => b.localeCompare(a));
   const activeMonthKey = `${activeYear}-${String(activeMonth + 1).padStart(2, "0")}`;
-  // A requested date wins while its month is displayed, so the default landing
-  // date survives even when that particular day has no activity of its own.
+  // Selection is independent of the today/next-MD markers. Today can have no events.
   const activeDate = requestedDate && requestedDate.startsWith(activeMonthKey)
     ? requestedDate
-    : (dates[0] ?? null);
+    : (defaultDate.startsWith(activeMonthKey) ? defaultDate : (dates[0] ?? null));
   const agendaEvents = activeDate ? (eventsByDate.get(activeDate) ?? []) : [];
   const selectedActivity = agendaEvents.find((event) => event.id === selectedActivityId && event.calendarType === "mission-day") ?? null;
   const activeYearIndex = years.indexOf(activeYear);
@@ -82,7 +85,7 @@ export function CalendarView({ events, xmAnomalies = [] }) {
   };
   const changeYear = (year) => {
     const monthsWithEvents = datedEvents.filter((event) => event.year === year).map((event) => Number(event.date.slice(5, 7)) - 1);
-    changePeriod(year, Math.max(...monthsWithEvents));
+    changePeriod(year, monthsWithEvents.length ? Math.max(...monthsWithEvents) : defaultMonth);
   };
   const changeActivityType = (type) => {
     setActivityType(type);
@@ -121,7 +124,7 @@ export function CalendarView({ events, xmAnomalies = [] }) {
         canGoPrevious={canGoPrevious} canGoNext={canGoNext} onMoveMonth={moveMonth} onYear={changeYear} onPeriod={changePeriod} />
       <div className="calendar-split">
         <CalendarGrid months={months} weekdays={weekdays} activeYear={activeYear} activeMonth={activeMonth}
-          eventsByDate={eventsByDate} activeDate={activeDate} monthEventCount={monthEventCount}
+          eventsByDate={eventsByDate} activeDate={activeDate} today={today} nextMdDate={nextMdDate} monthEventCount={monthEventCount}
           undatedCount={sourceActivities.length - datedEvents.length} wheelDirection={wheelDirection} onWheel={handleCalendarWheel}
           onDate={(date) => { setRequestedDate(date); setSelectedActivityId(null); }} />
         <CalendarAgenda activeDate={activeDate} events={agendaEvents} selectedActivity={selectedActivity}

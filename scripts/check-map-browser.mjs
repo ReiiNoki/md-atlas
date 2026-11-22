@@ -47,6 +47,8 @@ const port = await new Promise((resolve, reject) => {
 });
 const { events } = JSON.parse(await readFile(resolve(root, "public/data/archive.json"), "utf8"));
 const firstEvent = events[0];
+const xmAnomalyRecords = JSON.parse(await readFile(resolve(root, "public/data/xm-anomalies.json"), "utf8"));
+const latestXmAnomalyDate = xmAnomalyRecords.map(({ date }) => date).sort().at(-1);
 const today = new Date().toISOString().slice(0, 10);
 const upcomingMapEvent = events
   .filter(({ date, lat, lng }) => typeof date === "string" && date >= today &&
@@ -834,12 +836,14 @@ try {
   assert.equal(await visible(".calendar-days"), false, "Incomplete calendar data must stay hidden");
   await click('.view-loading button');
   await waitFor(() => visible(".calendar-days"), "calendar data retry");
-  // The calendar opens on the nearest upcoming activity, so navigate to the
-  // newest event's month explicitly before checking its localized marker.
+  // The calendar opens on today, so browse the fixture's month explicitly
+  // before checking its localized event marker.
   await setCalendarPeriod(firstEvent.year, Number(firstEvent.date.slice(5, 7)) - 1);
   assert.ok(await evaluate(`document.querySelector('.calendar-days').textContent.includes(${JSON.stringify(firstCityZh)})`), "Localized calendar marker for the newest event");
   assert.equal(await evaluate("document.querySelectorAll('.calendar-type-control button').length"), 3);
   await click(".calendar-type-control button:nth-child(3)");
+  await setCalendarPeriod(Number(latestXmAnomalyDate.slice(0, 4)), Number(latestXmAnomalyDate.slice(5, 7)) - 1);
+  await click(`.calendar-day[data-date="${latestXmAnomalyDate}"]`);
   await waitFor(() => visible(".calendar-xma-series"), "XM Anomaly series agenda");
   await waitFor(
     () => evaluate("[...document.querySelectorAll('.calendar-xma-series .calendar-xma-logo img')].every((image) => image.complete && image.naturalWidth > 0)"),
